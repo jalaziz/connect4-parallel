@@ -1,0 +1,18 @@
+*******************************************************************************
+*                                                                             *
+*                              Connect 4 Parallel                             *
+*                                                                             *
+*******************************************************************************
+
+DESCRIPTION
+
+A 3D version of Connect4 that utilizes pthreads.
+
+AUTHORS
+
+Jameel Al-Aziz
+Neil Tilley
+Mike Nichols
+Chris Knight
+Cody Prestwood
+Chien-Chia Chen
