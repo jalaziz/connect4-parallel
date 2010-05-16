@@ -8,6 +8,8 @@ DESCRIPTION
 
 A 3D version of Connect4 that utilizes pthreads.
 
+This project is based on Drop Four (http://sourceforge.net/projects/dropfour/).
+
 AUTHORS
 
 Jameel Al-Aziz
