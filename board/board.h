@@ -76,6 +76,9 @@ private:
 	int  calcMaxEval( int depth, int alpha, int beta );
 	int  calcMinEval( int depth, int alpha, int beta );
 
+    // threads' main function
+    void *t_main( void* args );
+
     // The following 6 will need both main versions and parallel versions.
 	void descendMoves( int* moves, int &nummoves );
 	void ascendMoves( int* moves, int &nummoves );
@@ -106,7 +109,7 @@ private:
 	static const int mconst_rgDownQuadcode[ MAGIC_LIMIT_QUADCODE ];
 	static const int mconst_rgUpEval[ MAGIC_LIMIT_QUADCODE ];
 
-    int m_twork[ MAGIC_LIMIT_COLS ];     // stores each threads work spaces
+    cwork_t m_twork[ MAGIC_LIMIT_COLS ];     // stores each threads work spaces
 	int m_rgPosition[ MAGIC_LIMIT_POS ]; // stores the pieces on the board, described in .cpp
 	int m_rgQuad[ MAGIC_LIMIT_QUAD ];    // stores the quads of the board, described in .cpp
 	int m_sumStatEval;                   // stores the sum of quad[1..69]

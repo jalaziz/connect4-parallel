@@ -241,6 +241,7 @@ Board::Board()
 {
 	int iPosition;
 	int iQuad;
+    int iThread;
 
 	// set it all to zero
 	for (iPosition = 0; iPosition < mconst_posLim; iPosition++)
@@ -257,6 +258,26 @@ Board::Board()
 	// it is human's turn by default, and a given difficulty by default
 	m_fIsComputerTurn = 0;
 	setDifficulty( mconst_defaultDifficulty );
+
+    for (iThread = 0; iThread < MAGIC_LIMIT_COLS; iThread++) {
+        // initialize our pthread library variables
+        pthread_mutex_init(&(m_twork[iThread].lock), NULL);
+        pthread_cond_init(&(m_twork[iThread].cond), NULL);
+        // set our thread number
+        m_twork[iThread].thread_num = iThread;
+        // set our other values to zero
+        m_twork[iThread].m_sumStatEval = 0;
+        m_twork[iThread].m_cMoves = 0;
+        for (iPosition = 0; iPosition < mconst_posLim; iPosition++)
+        {
+            m_twork[iThread].m_rgPosition[ iPosition ] = 0;
+        }
+
+        for (iQuad = 0; iQuad < mconst_quadLim; iQuad++)
+        {
+            m_twork[iThread].m_rgQuad[ iQuad ] = 0;
+        }
+    }
 }
 
 // returns 1 if computer won (max), 0 otherwise
