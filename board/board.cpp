@@ -93,6 +93,7 @@
  */
 
 #include <stdlib.h>
+#include <pthread.h>
 #include <time.h>
 #include "board.h"
 using namespace DropFour;
@@ -427,6 +428,41 @@ void Board::move( int colMove )
 	m_fIsComputerTurn = !m_fIsComputerTurn;
 }
 
+void Board::t_move( int colMove )
+{
+	int quadTemp;
+	const int* pQuads;
+	int* colBase;
+	int rowBySevens;
+	int square;
+
+	// add the latest move to history
+	m_rgHistory[ m_cMoves++ ] = colMove;
+
+	// find the lowest blank in column, thus setting the row
+	colBase = m_rgPosition + 35 + colMove; // i.e., bottom row, same column
+	rowBySevens = (*colBase ? (colBase[-7] ? (colBase[-14] ? (colBase[-21] ?
+	               (colBase[-28] ? 0 : 7) : 14) : 21) : 28) : 35);
+	square = rowBySevens + colMove;
+
+	// set this position's value to -1 for human, 1 for computer
+	// (whoever's turn it is)
+	m_rgPosition[ square ] = ( m_fIsComputerTurn ? 1 : -1 );
+
+	// update the quads for this position
+	pQuads = mconst_mpPosQuads[ square ];
+	updateQuad(*pQuads++);
+	updateQuad(*pQuads++);
+	updateQuad(*pQuads++);
+	while ( quadTemp = *pQuads++ )
+	{
+		updateQuad( quadTemp );
+	}
+
+	// give the other guy a turn
+	m_fIsComputerTurn = !m_fIsComputerTurn;
+}
+
 // The least significant bit has a 0 for human's turn, 1 for computer's.
 // the next four bits hold a code 0-14 (i.e. 15 possibilities) for the
 // number of max and min's squares.
@@ -434,6 +470,13 @@ void Board::move( int colMove )
 // are declared. This function will update the quadcode and the stateval
 // based on the addition of max (odd, i.e. +1) or min (even, i.e., +0)
 inline void Board::updateQuad( int iQuad )
+{
+	int quadcode = m_rgQuad[ iQuad ] + m_fIsComputerTurn;
+	m_rgQuad[ iQuad ] = mconst_rgUpQuadcode[ quadcode ];
+	m_sumStatEval += mconst_rgUpEval[ quadcode ];
+}
+
+inline void Board::t_updateQuad( int iQuad )
 {
 	int quadcode = m_rgQuad[ iQuad ] + m_fIsComputerTurn;
 	m_rgQuad[ iQuad ] = mconst_rgUpQuadcode[ quadcode ];
@@ -476,12 +519,51 @@ void Board::remove( void )
 	}
 }
 
+void Board::t_remove( void )
+{
+	int quadTemp;
+	const int* pQuads;
+	int* colBase;
+	int rowBySevens;
+	int square;
+
+	// decrement movenum, retrieve last move
+	int colMove = m_rgHistory[ --m_cMoves ];
+
+	// find the highest occupied square
+	colBase = m_rgPosition + colMove;
+	rowBySevens = (*colBase) ? 0 : (colBase[7] ? 7 : (colBase[14] ? 14 :
+	              (colBase[21] ? 21 : (colBase[28] ? 28 : 35))));
+	square = rowBySevens + colMove;
+
+	// if removing comp, now comp's turn; else human's if removing human
+	m_fIsComputerTurn = !m_fIsComputerTurn;
+
+	// set this position's value back to 0
+	m_rgPosition[ square ] = 0;
+
+	// reset the quads for this position
+	pQuads = mconst_mpPosQuads[ square ];
+	downdateQuad( *pQuads++ );
+	downdateQuad( *pQuads++ );
+	downdateQuad( *pQuads++ );
+	while (quadTemp = *pQuads++)
+	{
+		downdateQuad( quadTemp );
+	}
+}
+
 inline void Board::downdateQuad( int iQuad )
 {
 	m_rgQuad[ iQuad ] = mconst_rgDownQuadcode[ m_rgQuad[ iQuad ] + m_fIsComputerTurn ];
 	m_sumStatEval -= mconst_rgUpEval[ m_rgQuad[ iQuad ] + m_fIsComputerTurn ];
 }
 
+inline void Board::t_downdateQuad( int iQuad )
+{
+	m_rgQuad[ iQuad ] = mconst_rgDownQuadcode[ m_rgQuad[ iQuad ] + m_fIsComputerTurn ];
+	m_sumStatEval -= mconst_rgUpEval[ m_rgQuad[ iQuad ] + m_fIsComputerTurn ];
+}
 
 int Board::calcMaxMove(void)
 {
@@ -499,8 +581,11 @@ int Board::calcMaxMove(void)
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
 	descendMoves( rgMoves, movesLim );
 
+    // as a default set the best and second best to the statically best move
 	bestmove = secondbestmove = rgMoves[ 0 ];
 
+    // split threads here.  one for each column.
+    // for each move in the rgMoves array, evaluate the move
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
 	{
 		move( rgMoves[ iMoves ] );
@@ -515,7 +600,9 @@ int Board::calcMaxMove(void)
 			bestmove = rgMoves[ iMoves ];
 		}
 	}
+    // join threads here.
 
+    // select randomly which move to return
 	randomchance = rand() / (1.0 + (double)RAND_MAX);
 	if ( randomchance < m_chancePickBest )
 	{
@@ -597,18 +684,19 @@ int Board::calcMaxEval( int depth, int alpha, int beta )
 	if (! (--depth))
 	{                 
 		for (int iMoves = 0; iMoves < movesLim; iMoves++)
+        {
+            if (!m_rgPosition[ iMoves ])
+            {
+                move( iMoves );
+                
+                if (m_sumStatEval > best)
+                {
+                    best = m_sumStatEval;
+                }
 
-		if (!m_rgPosition[ iMoves ])
-		{
-			move( iMoves );
-			
-			if (m_sumStatEval > best)
-			{
-				best = m_sumStatEval;
-         	}
-
-			remove();
-		}
+                remove();
+            }
+        }
 	}
 	else
 	{
@@ -758,7 +846,108 @@ void Board::descendMoves( int* moves, int &movesLim )
 	free(statvals);
 }
 
+void Board::t_descendMoves( int* moves, int &movesLim )
+{
+	int i = 0;
+	int j;
+	int temp;
+	int *statvals;
+	int bigval, bigindex;
+
+	statvals = (int *)calloc(movesLim,sizeof(int));
+
+	while (i < movesLim)
+	{
+		// if the column of move i is full, take it off the list
+		// by reducing size and copying the last element into its place
+		if (m_rgPosition[ moves[ i ] ])  
+		{
+			moves[ i ] = moves[ movesLim - 1 ];
+			movesLim--;
+		}
+		else
+		{
+			move( moves[ i ] );
+			statvals[ moves[ i ] ] = m_sumStatEval;
+			remove();
+			i++;
+		}
+	}
+
+	// sorting algorithm
+	for (i = 0; i < movesLim - 1; i++)
+	{
+		bigval = statvals[ moves[ i ] ];
+		bigindex = 0;
+
+		for (j = i + 1; j < movesLim; j++)
+		if (statvals[ moves[ j ] ] > bigval)
+		{
+			bigval = statvals[ moves[ j ] ];
+			bigindex = j;
+		}
+
+		if (bigindex)
+		{
+			temp = moves[ i ];
+			moves[ i ] = moves[ bigindex ];
+			moves[ bigindex ] = temp;
+		}
+	}
+	free(statvals);
+}
+
 void Board::ascendMoves( int* moves, int &movesLim )
+{
+	int i = 0;
+	int j;
+	int temp;
+	int *statvals;
+	int smallval, smallindex;
+
+	statvals = (int *)calloc(movesLim,sizeof(int));
+
+	while (i < movesLim)
+	{
+		// if the column of move i is full, take it off the list
+		// by reducing size and copying the last element into its place
+		if (m_rgPosition[ moves[ i ] ])
+		{
+			moves[ i ] = moves[ movesLim - 1 ];
+			movesLim--;
+		}
+		else
+		{
+			move( moves[ i ] );
+			statvals[ moves[ i++ ] ] = m_sumStatEval;
+			remove();
+		}
+	}
+
+	// sorting algorithm
+	for (i = 0; i < movesLim - 1; i++)
+	{
+		smallval = statvals[ moves[ i ] ];
+		smallindex = 0;
+
+		for (j = i + 1; j < movesLim; ++j)
+		if (statvals[ moves[ j ] ] < smallval)
+		{
+			smallval = statvals[ moves[ j ] ];
+			smallindex = j;
+		}
+
+		if (smallindex)
+		{
+			temp = moves[ i ];
+			moves[ i ] = moves[ smallindex ];
+			moves[ smallindex ] = temp;
+		}
+	}
+	free(statvals);
+}
+
+void Board::t_ascendMoves( int* moves, int &movesLim )
 {
 	int i = 0;
 	int j;
