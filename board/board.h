@@ -27,21 +27,6 @@
 #define MAGIC_LIMIT_QUADCODE 30
 #define MAGIC_LIMIT_QUAD_PER_POS 14
 
-namespace DropFour {
-
-// This structure holds local copies of the board for each thread and 
-// is what they modify for their calculations.
-typedef struct cwork_ {
-    pthread_mutex_t lock;
-    pthread_cond_t cond;
-    int thread_num;
-	int m_rgPosition[ MAGIC_LIMIT_POS ]; // stores the pieces on the board, described in .cpp
-	int m_rgQuad[ MAGIC_LIMIT_QUAD ];    // stores the quads of the board, described in .cpp
-	int m_sumStatEval;                   // stores the sum of quad[1..69]
-	int m_rgHistory[ MAGIC_LIMIT_POS ];  // contain col's of previous moves
-	int m_cMoves;                        // stores the number of moves made so far
-} cwork_t;
-
 class Board
 {
 public:
@@ -55,6 +40,8 @@ public:
 	int  takeHumanTurn( int colMove );
 	int  takeComputerTurn( void );
 	int  takeBackMove( void );
+    int  getNumMoves( void );
+    int  getLastMove( void );
 	
 	static const int mconst_colNil;
 	// number of positions or squares on board
@@ -70,29 +57,16 @@ public:
 	}
 
 private:
-    // The following four will be done in parallel only.
 	int  calcMaxMove( void );
 	int  calcMinMove( void );
 	int  calcMaxEval( int depth, int alpha, int beta );
 	int  calcMinEval( int depth, int alpha, int beta );
-
-    // threads' main function
-    void *t_main( void* args );
-
-    // The following 6 will need both main versions and parallel versions.
 	void descendMoves( int* moves, int &nummoves );
 	void ascendMoves( int* moves, int &nummoves );
 	void move( int colMove );
 	void remove( void );
 	void updateQuad( int iQuad );
 	void downdateQuad( int iQuad );
-
-	void t_descendMoves( int* moves, int &nummoves );
-	void t_ascendMoves( int* moves, int &nummoves );
-	void t_move( int colMove );
-	void t_remove( void );
-	void t_updateQuad( int iQuad );
-	void t_downdateQuad( int iQuad );
 
 	static const int mconst_defaultDifficulty;
 	static const int mconst_branchFactorMax;
@@ -109,7 +83,6 @@ private:
 	static const int mconst_rgDownQuadcode[ MAGIC_LIMIT_QUADCODE ];
 	static const int mconst_rgUpEval[ MAGIC_LIMIT_QUADCODE ];
 
-    cwork_t m_twork[ MAGIC_LIMIT_COLS ];     // stores each threads work spaces
 	int m_rgPosition[ MAGIC_LIMIT_POS ]; // stores the pieces on the board, described in .cpp
 	int m_rgQuad[ MAGIC_LIMIT_QUAD ];    // stores the quads of the board, described in .cpp
 	int m_sumStatEval;                   // stores the sum of quad[1..69]
@@ -121,5 +94,3 @@ private:
 	double m_chancePickBest;             // the chance the computer will pick the best move
 	double m_chancePickSecondBest;       // the chance the computer will pick second best move
 };
-
-} // namespace DropFour
