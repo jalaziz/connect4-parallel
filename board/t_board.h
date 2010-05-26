@@ -46,12 +46,14 @@ typedef struct cwork_ {
 	int m_rgHistory[ MAGIC_LIMIT_POS ];  // contain col's of previous moves
 	int m_cMoves;                        // stores the number of moves made so far
 	int m_fIsComputerTurn;               // 1 if computer's turn to move, 0 if human's
+    int m_eval;
 } cwork_t;
 
 typedef struct result_ {
     pthread_mutex_t lock;
     pthread_cond_t cond;
     int threads_finished;
+    int best;
     int best_move;
     int second_best_move;
 } result_t;
