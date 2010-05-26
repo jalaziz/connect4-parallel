@@ -49,37 +49,35 @@ using namespace std;
 #include <time.h>
 #include <stdlib.h>
 #include "ioface.h"
-#include "board/board.h"
-using namespace DropFour;
+#include "board/t_board.h"
 
 int main()
 {
-	Board board;
-	int rgBoardPos[ Board::mconst_posLim ];
+	int rgBoardPos[ const_posLim ];
 	clock_t clkBefore, clkAfter;
 
 	init();
 
 	if ( askfirst() )
 	{
-		board.setHumanFirst();
+		setHumanFirst();
 	}
 	else
 	{
-		board.setComputerFirst();
+		setComputerFirst();
 	}
 	
-	board.setDifficulty( askdifficulty() );
+	setDifficulty( askdifficulty() );
 
-	board.getBoardState( rgBoardPos );
+	getBoardState( rgBoardPos );
 	display( rgBoardPos );
 
-	while (!board.isGameOver())
+	while (!isGameOver())
 	{
-		if ( board.isComputerTurn() )
+		if ( isComputerTurn() )
 		{
 			clkBefore = clock();
-			board.takeComputerTurn();
+			takeComputerTurn();
 			clkAfter = clock();
 			cout << endl << "The computer took ";
 			cout << ( clkAfter - clkBefore ) / (double)CLOCKS_PER_SEC;
@@ -87,16 +85,16 @@ int main()
 		}
 		else
 		{
-			while ( board.takeHumanTurn( askmove() ) == Board::mconst_colNil )
+			while ( takeHumanTurn( askmove() ) == const_colNil )
 				; // loop until a valid move is entered
 				  // even though askmove() already validates input
 		}
 
-		board.getBoardState( rgBoardPos );
+		getBoardState( rgBoardPos );
 		display( rgBoardPos );
 	}
 
-	endgame( board.isComputerWin() ? 1 : ( board.isHumanWin() ? -1 : 0 ) );
+	endgame( isComputerWin() ? 1 : ( isHumanWin() ? -1 : 0 ) );
 
 	return EXIT_SUCCESS;
 }

@@ -1,6 +1,6 @@
 CC   = g++
-FLAG = -g -Iboard
-SRCS = dropfour-text.cpp ioface.cpp board/board.cpp
+FLAG = -g -pthread -Iboard
+SRCS = dropfour-text.cpp ioface.cpp board/t_board.cpp
 
 all: drop4txt
 
