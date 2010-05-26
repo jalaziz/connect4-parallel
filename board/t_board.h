@@ -56,6 +56,8 @@ typedef struct result_ {
     int best;
     int best_move;
     int second_best_move;
+    int alpha;
+    int beta;
 } result_t;
 
 typedef struct board_ {

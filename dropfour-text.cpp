@@ -47,6 +47,7 @@
 #include <iostream>
 using namespace std;
 #include <time.h>
+#include <sys/time.h>
 #include <stdlib.h>
 #include "ioface.h"
 #include "board/t_board.h"
@@ -56,6 +57,7 @@ int main()
 	int rgBoardPos[ const_posLim ];
 	clock_t clkBefore, clkAfter;
 
+    boardInit();
 	init();
 
 	if ( askfirst() )
@@ -76,11 +78,15 @@ int main()
 	{
 		if ( isComputerTurn() )
 		{
-			clkBefore = clock();
+            timeval t1, t2;
+            double elapsedTime;
+            gettimeofday(&t1, NULL);
 			takeComputerTurn();
-			clkAfter = clock();
+            gettimeofday(&t2, NULL);
+            elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;
+            elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;
 			cout << endl << "The computer took ";
-			cout << ( clkAfter - clkBefore ) / (double)CLOCKS_PER_SEC;
+			cout << elapsedTime / 1000.0;
 			cout << " seconds to make its decision." << endl;
 		}
 		else

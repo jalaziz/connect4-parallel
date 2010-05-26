@@ -723,6 +723,7 @@ int t_calcMaxMove(void)
 	bestmove = secondbestmove = rgMoves[ 0 ];
 
     pthread_mutex_lock(&board.result.lock);
+    board.result.alpha = alpha;
     board.result.best = best;
     board.result.best_move = rgMoves[ 0 ];
     board.result.second_best_move = rgMoves[ 0 ];
@@ -745,6 +746,11 @@ int t_calcMaxMove(void)
     while (board.result.threads_finished != MAGIC_LIMIT_COLS) {
         pthread_cond_wait(&board.result.cond, &board.result.lock);
     }
+    // get the thread results.
+    bestmove = board.result.best_move;
+    secondbestmove = board.result.second_best_move;
+
+    printf("Thread results are #1: %d and #2: %d\n", bestmove, secondbestmove);
     board.result.best_move = const_colNil;
     board.result.second_best_move = const_colNil;
     board.result.threads_finished = 0;
@@ -753,6 +759,7 @@ int t_calcMaxMove(void)
     printf("Main thread awoken.\n");
 
     // for each move in the rgMoves array, evaluate the move
+    /*
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
 	{
 		move( rgMoves[ iMoves ] );
@@ -767,6 +774,7 @@ int t_calcMaxMove(void)
 			bestmove = rgMoves[ iMoves ];
 		}
 	}
+    */
     // get results from threads here.
 
     // select randomly which move to return
@@ -825,7 +833,7 @@ void t_calcMaxWork( cwork_t* data )
     if (board.result.best < temp) {
         board.result.best = temp;
         board.result.second_best_move = board.result.best_move;
-        board.result.best_move = bestmove;
+        board.result.best_move = data->thread_num;
     }
     // if this is the last thread to return, signal main thread
     if (board.result.threads_finished == MAGIC_LIMIT_COLS) {
@@ -905,6 +913,7 @@ int t_calcMinMove(void)
 
 	bestmove = secondbestmove = rgMoves[ 0 ];
     pthread_mutex_lock(&board.result.lock);
+    board.result.beta = beta;
     board.result.best = best;
     board.result.best_move = rgMoves[ 0 ];
     board.result.second_best_move = rgMoves[ 0 ];
@@ -927,6 +936,11 @@ int t_calcMinMove(void)
     while (board.result.threads_finished != MAGIC_LIMIT_COLS) {
         pthread_cond_wait(&board.result.cond, &board.result.lock);
     }
+    // get the thread results.
+    bestmove = board.result.best_move;
+    secondbestmove = board.result.second_best_move;
+
+    printf("Thread results are #1: %d and #2: %d\n", bestmove, secondbestmove);
     board.result.best_move = const_colNil;
     board.result.second_best_move = const_colNil;
     board.result.threads_finished = 0;
@@ -934,6 +948,7 @@ int t_calcMinMove(void)
 
     printf("Main thread awoken.\n");
 
+    /*
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
 	{
 		move( rgMoves[ iMoves ] );
@@ -950,6 +965,7 @@ int t_calcMinMove(void)
 			bestmove = rgMoves[ iMoves ];
 		}
 	}
+    */
 
 	randomchance = rand() / (1.0 + (double)RAND_MAX);
 	if ( randomchance < board.m_chancePickBest )
@@ -1003,7 +1019,7 @@ void t_calcMinWork( cwork_t* data )
     if (board.result.best > temp) {
         board.result.best = temp;
         board.result.second_best_move = board.result.best_move;
-        board.result.best_move = bestmove;
+        board.result.best_move = data->thread_num;
     }
     // if this is the last thread to return, signal main thread
     if (board.result.threads_finished == MAGIC_LIMIT_COLS) {
@@ -1127,6 +1143,7 @@ int t_calcMaxEval( int depth, int alpha, int beta, cwork_t* data )
 				// position which min could choose, so min would never allow.
 				if (temp >= beta)
 				{
+                    //printf("Thread %d: Pruned!\n", data->thread_num);
 					break;
 				}
 			}
@@ -1253,6 +1270,7 @@ int t_calcMinEval( int depth, int alpha, int beta, cwork_t* data )
 				// position which min could choose, so min would never allow.
 				if (temp <= alpha)
 				{
+                    //printf("Thread %d: Pruned!\n", data->thread_num);
 					break;
 				}
 			}
