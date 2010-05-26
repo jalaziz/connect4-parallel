@@ -272,8 +272,17 @@ void boardInit()
 
 	// it is human's turn by default, and a given difficulty by default
 	board.m_fIsComputerTurn = 0;
+    // set the default difficulty
 	setDifficulty( const_defaultDifficulty );
 
+    // initialize our results struct
+    pthread_mutex_init(&board.result.lock, NULL);
+    pthread_cond_init(&board.result.cond, NULL);
+    board.result.threads_finished = 0;
+    board.result.best_move = const_colNil;
+    board.result.second_best_move = const_colNil;
+
+    // set up our threads.
     for (iThread = 0; iThread < MAGIC_LIMIT_COLS; iThread++) {
         // initialize our pthread library variables
         pthread_mutex_init(&(board.m_twork[iThread].lock), NULL);
@@ -305,6 +314,11 @@ int getNumMoves( void ) {
 // returns the most recent taken move
 int getLastMove( void ) {
     return board.m_rgHistory[board.m_cMoves - 1];
+}
+
+// returns the second to most recent taken move
+int getSecondToLastMove( void ) {
+    return board.m_rgHistory[board.m_cMoves - 2];
 }
 
 // returns 1 if computer won (max), 0 otherwise
@@ -375,9 +389,9 @@ void setHumanFirst( void )
 	board.m_fIsComputerTurn = 0;
     // set the threads' first turn as well
     for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
-        //pthread_mutex_lock(&board.m_twork[iThreads].lock);
+        pthread_mutex_lock(&board.m_twork[iThreads].lock);
         board.m_twork[iThreads].m_fIsComputerTurn = 0;
-        //pthread_mutex_unlock(&board.m_twork[iThreads].lock);
+        pthread_mutex_unlock(&board.m_twork[iThreads].lock);
     }
 }
 
@@ -388,9 +402,9 @@ void setComputerFirst( void )
 	board.m_fIsComputerTurn = 1;
     // set the threads' first turn as well
     for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
-        //pthread_mutex_lock(&board.m_twork[iThreads].lock);
+        pthread_mutex_lock(&board.m_twork[iThreads].lock);
         board.m_twork[iThreads].m_fIsComputerTurn = 1;
-        //pthread_mutex_unlock(&board.m_twork[iThreads].lock);
+        pthread_mutex_unlock(&board.m_twork[iThreads].lock);
     }
 }
 
@@ -430,11 +444,11 @@ int takeComputerTurn( void )
 	{
 		if ( board.m_fIsComputerTurn )
 	   	{
-			colMove = calcMaxMove();
+			colMove = t_calcMaxMove();
 		}
 		else
 		{
-			colMove = calcMinMove();
+			colMove = t_calcMinMove();
 		}
 		
 		move( colMove );
@@ -707,7 +721,6 @@ int t_calcMaxMove(void)
     // as a default set the best and second best to the statically best move
 	bestmove = secondbestmove = rgMoves[ 0 ];
 
-    printf("Main board has %d moves\n", board.m_cMoves);
 
     // Start threads doing a cycle of their work.
     for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
@@ -715,6 +728,20 @@ int t_calcMaxMove(void)
         pthread_cond_signal(&board.m_twork[iThreads].cond);
         pthread_mutex_unlock(&board.m_twork[iThreads].lock);
     }
+
+    printf("Main thread going to sleep\n");
+
+    // Wait for threads to be done.
+    pthread_mutex_lock(&board.result.lock);
+    while (board.result.threads_finished != MAGIC_LIMIT_COLS) {
+        pthread_cond_wait(&board.result.cond, &board.result.lock);
+    }
+    board.result.best_move = const_colNil;
+    board.result.second_best_move = const_colNil;
+    board.result.threads_finished = 0;
+    pthread_mutex_unlock(&board.result.lock);
+
+    printf("Main thread awoken.\n");
 
     // for each move in the rgMoves array, evaluate the move
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
@@ -748,6 +775,53 @@ int t_calcMaxMove(void)
 		randomchance = rand() / (1.0 + (double)RAND_MAX);
 		return rgMoves[ (int) (randomchance * movesLim) ];
 	}
+}
+
+void t_calcMaxWork( cwork_t* data )
+{
+	// the root node is max, and so has an alpha value.
+    int iMoves;
+	int temp;
+	int alpha = const_worstEval;
+	int best = const_worstEval - 1;
+	int bestmove;
+	int secondbestmove;
+	double randomchance;
+
+	// the list of valid moves, 'best' move first (descending static value)
+	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
+	int movesLim = sizeof( rgMoves ) / sizeof( int );
+	t_descendMoves( rgMoves, movesLim, data );
+
+    // as a default set the best and second best to the statically best move
+	bestmove = secondbestmove = rgMoves[ 0 ];
+
+    // if our column is in the moves array, evaluate it
+	for(iMoves = 0; iMoves < movesLim; iMoves++)
+	{
+        if (rgMoves[iMoves] == data->thread_num) {
+            t_move( rgMoves[ iMoves ], data );
+            temp = t_isGameOver( data ) ? data->m_sumStatEval
+                              : t_calcMinEval( board.m_depthMax, 
+                                      alpha, const_bestEval, data );
+            t_remove( data );
+
+            if (best < temp)
+            {
+                best = alpha = temp;
+                secondbestmove = bestmove;
+                bestmove = rgMoves[ iMoves ];
+            }
+        }
+	}
+    printf("Thread %d: best was %d\n", data->thread_num, best);
+    // put result in result
+    pthread_mutex_lock(&board.result.lock);
+    board.result.threads_finished++;
+    if (board.result.threads_finished == MAGIC_LIMIT_COLS) {
+        pthread_cond_signal(&board.result.cond);
+    }
+    pthread_mutex_unlock(&board.result.lock);
 }
 
 int calcMinMove(void)
@@ -828,6 +902,20 @@ int t_calcMinMove(void)
         pthread_cond_signal(&board.m_twork[iThreads].cond);
         pthread_mutex_unlock(&board.m_twork[iThreads].lock);
     }
+
+    printf("Main thread going to sleep\n");
+
+    // Wait for threads to be done.
+    pthread_mutex_lock(&board.result.lock);
+    while (board.result.threads_finished != MAGIC_LIMIT_COLS) {
+        pthread_cond_wait(&board.result.cond, &board.result.lock);
+    }
+    board.result.best_move = const_colNil;
+    board.result.second_best_move = const_colNil;
+    board.result.threads_finished = 0;
+    pthread_mutex_unlock(&board.result.lock);
+
+    printf("Main thread awoken.\n");
 
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
 	{
@@ -1320,25 +1408,47 @@ void* t_main( void* args ) {
     while(1) {
         // get a lock on our data space
         pthread_mutex_lock(&data->lock);
-        printf("Thread %d active!\n", data->thread_num);
+        printf("Thread %d: active!\n", data->thread_num);
 
         // while our board is in sync with the main board
-        while (data->m_cMoves == getNumMoves()) {
-            printf("Thread %d going to sleep!\n", data->thread_num);
+        while (data->m_cMoves == board.m_cMoves) {
+            printf("Thread %d: going to sleep!\n", data->thread_num);
             // wait until we are woken up and the board is different
             pthread_cond_wait(&data->cond, &data->lock);
-            printf("Thread %d awoken!\n", data->thread_num);
+            printf("Thread %d: awoken!\n", data->thread_num);
         }
 
-        // The main board should never be more than 1 move ahead of us
-        //assert(data->board->getNumMoves() - data->m_cMoves == 1);
-        printf("Main board has %d moves\n", getNumMoves());
-        printf("Our board has %d moves\n", data->m_cMoves);
-        printf("Thread %d updating its board!\n", data->thread_num);
-        // Update our board with the latest move.
-        //t_move(data->board->getLastMove(), data);
+        // The main board should never be more than 1 or 2 moves ahead of us
+        assert(board.m_cMoves - data->m_cMoves == 1 || 
+                board.m_cMoves - data->m_cMoves == 2);
+        printf("Thread %d: Main board has %d moves\n", data->thread_num, board.m_cMoves);
+        printf("Thread %d: Our board has %d moves\n", data->thread_num, data->m_cMoves);
+        printf("Thread %d: updating its board!\n", data->thread_num);
+
+        // Update our board with the latest move(s).
+        if (board.m_cMoves - data->m_cMoves == 1) {
+            t_move(getLastMove(), data);
+        }
+        else {
+            t_move(getSecondToLastMove(), data);
+            t_move(getLastMove(), data);
+        }
+        printf("Thread %d: Our new board has %d moves\n", data->thread_num, data->m_cMoves);
+        // do our evaluation
+        // If it's the computer's turn, do a Max.
+		if ( board.m_fIsComputerTurn )
+	   	{
+            printf("Thread %d: Comp's turn.\n", data->thread_num);
+            t_calcMaxWork( data );
+		}
+        // Otherwise, do a min.
+        else {
+            printf("Thread %d: Other's turn.\n", data->thread_num);
+        }
+
         // unlock our data space
         pthread_mutex_unlock(&data->lock);
+
     }
     pthread_exit(NULL);
 }

@@ -48,6 +48,14 @@ typedef struct cwork_ {
 	int m_fIsComputerTurn;               // 1 if computer's turn to move, 0 if human's
 } cwork_t;
 
+typedef struct result_ {
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    int threads_finished;
+    int best_move;
+    int second_best_move;
+} result_t;
+
 typedef struct board_ {
     cwork_t m_twork[ MAGIC_LIMIT_COLS ]; // stores each threads work spaces
     pthread_t m_threads[ MAGIC_LIMIT_COLS ];    // stores the threads
@@ -63,6 +71,7 @@ typedef struct board_ {
 	int m_depthMax;                      // ply, no. of moves to search ahead
 	double m_chancePickBest;       // the chance the computer will pick the best move
 	double m_chancePickSecondBest; // the chance the computer will pick second best move
+    result_t result;
 } board_t;
 
 // Our global board
@@ -81,6 +90,7 @@ int  takeComputerTurn( void );
 int  takeBackMove( void );
 int  getNumMoves( void );
 int  getLastMove( void );
+int  getSecondToLastMove( void );
 void getBoardState( int rgPosition[ MAGIC_LIMIT_POS ] );
 int isGameOver( void );
 void move( int colMove);
@@ -93,6 +103,8 @@ void updateQuad( int iQuad );
 void downdateQuad( int iQuad );
 void descendMoves( int* moves, int &movesLim );
 void ascendMoves( int* moves, int &movesLim );
+int t_calcMaxMove( void );
+int t_calcMinMove( void );
 
 // threads' main function
 void *t_main( void* args );
