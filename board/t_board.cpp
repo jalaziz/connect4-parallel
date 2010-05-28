@@ -100,6 +100,8 @@
 #include <assert.h>
 #include "t_board.h"
 
+//#define debug
+
 // set the default difficulty to level 4, and the max branch factor to 4 moves
 const int const_defaultDifficulty = 4;
 
@@ -667,7 +669,9 @@ int calcMaxMove(void)
     // as a default set the best and second best to the statically best move
 	bestmove = secondbestmove = rgMoves[ 0 ];
 
+#ifdef debug
     printf("Main board has %d moves\n", board.m_cMoves);
+#endif
 
     // for each move in the rgMoves array, evaluate the move
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
@@ -729,7 +733,9 @@ int t_calcMaxMove(void)
     board.result.second_best_move = rgMoves[ 0 ];
     pthread_mutex_unlock(&board.result.lock);
 
+#ifdef debug
     printf("Main board has %d moves\n", board.m_cMoves);
+#endif
 
     // Start threads doing a cycle of their work.
     for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
@@ -739,7 +745,10 @@ int t_calcMaxMove(void)
         pthread_mutex_unlock(&board.m_twork[iThreads].lock);
     }
 
+
+#ifdef debug
     printf("Main thread going to sleep\n");
+#endif
 
     // Wait for threads to be done.
     pthread_mutex_lock(&board.result.lock);
@@ -750,13 +759,17 @@ int t_calcMaxMove(void)
     bestmove = board.result.best_move;
     secondbestmove = board.result.second_best_move;
 
+#ifdef debug
     printf("Thread results are #1: %d and #2: %d\n", bestmove, secondbestmove);
+#endif
     board.result.best_move = const_colNil;
     board.result.second_best_move = const_colNil;
     board.result.threads_finished = 0;
     pthread_mutex_unlock(&board.result.lock);
 
+#ifdef debug
     printf("Main thread awoken.\n");
+#endif
 
     // for each move in the rgMoves array, evaluate the move
     /*
@@ -824,7 +837,9 @@ void t_calcMaxWork( cwork_t* data )
             t_remove( data );
         }
 	}
+#ifdef debug
     printf("Thread %d: best was %d\n", data->thread_num, temp);
+#endif
 
     // put result in result
     pthread_mutex_lock(&board.result.lock);
@@ -858,7 +873,9 @@ int calcMinMove(void)
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
 	ascendMoves( rgMoves, movesLim );
 
+#ifdef debug
     printf("Main board has %d moves\n", board.m_cMoves);
+#endif
 
 	bestmove = secondbestmove = rgMoves[ 0 ];
 
@@ -919,7 +936,9 @@ int t_calcMinMove(void)
     board.result.second_best_move = rgMoves[ 0 ];
     pthread_mutex_unlock(&board.result.lock);
 
+#ifdef debug
     printf("Main board has %d moves\n", board.m_cMoves);
+#endif
 
     // Start threads doing a cycle of their work.
     for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
@@ -929,7 +948,9 @@ int t_calcMinMove(void)
         pthread_mutex_unlock(&board.m_twork[iThreads].lock);
     }
 
+#ifdef debug
     printf("Main thread going to sleep\n");
+#endif
 
     // Wait for threads to be done.
     pthread_mutex_lock(&board.result.lock);
@@ -940,13 +961,17 @@ int t_calcMinMove(void)
     bestmove = board.result.best_move;
     secondbestmove = board.result.second_best_move;
 
+#ifdef debug
     printf("Thread results are #1: %d and #2: %d\n", bestmove, secondbestmove);
+#endif
     board.result.best_move = const_colNil;
     board.result.second_best_move = const_colNil;
     board.result.threads_finished = 0;
     pthread_mutex_unlock(&board.result.lock);
 
+#ifdef debug
     printf("Main thread awoken.\n");
+#endif
 
     /*
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
@@ -1012,7 +1037,9 @@ void t_calcMinWork( cwork_t* data )
             t_remove( data );
         }
 	}
+#ifdef debug
     printf("Thread %d: best was %d\n", data->thread_num, temp);
+#endif
     pthread_mutex_lock(&board.result.lock);
     board.result.threads_finished++;
     // if this threads result is better, update best moves
@@ -1489,22 +1516,30 @@ void* t_main( void* args ) {
     while(1) {
         // get a lock on our data space
         pthread_mutex_lock(&data->lock);
+#ifdef debug
         printf("Thread %d: active!\n", data->thread_num);
+#endif
 
         // while our board is in sync with the main board
         while (!data->m_eval) {
+#ifdef debug
             printf("Thread %d: going to sleep!\n", data->thread_num);
+#endif
             // wait until we are woken up and the board is different
             pthread_cond_wait(&data->cond, &data->lock);
+#ifdef debug
             printf("Thread %d: awoken!\n", data->thread_num);
+#endif
         }
         data->m_eval = 0;
         // The main board should never be more than 1 or 2 moves ahead of us
         assert(board.m_cMoves - data->m_cMoves == 1 || 
                 board.m_cMoves - data->m_cMoves == 2);
+#ifdef debug
         printf("Thread %d: Main board has %d moves\n", data->thread_num, board.m_cMoves);
         printf("Thread %d: Our board has %d moves\n", data->thread_num, data->m_cMoves);
         printf("Thread %d: updating its board!\n", data->thread_num);
+#endif
 
         // Update our board with the latest move(s).
         if (board.m_cMoves - data->m_cMoves == 1) {
@@ -1514,17 +1549,23 @@ void* t_main( void* args ) {
             t_move(getSecondToLastMove(), data);
             t_move(getLastMove(), data);
         }
+#ifdef debug
         printf("Thread %d: Our new board has %d moves\n", data->thread_num, data->m_cMoves);
+#endif
         // do our evaluation
         // If it's the computer's turn, do a Max.
 		if ( board.m_fIsComputerTurn )
 	   	{
+#ifdef debug
             printf("Thread %d: Comp's turn.\n", data->thread_num);
+#endif
             t_calcMaxWork( data );
 		}
         // Otherwise, do a min.
         else {
+#ifdef debug
             printf("Thread %d: Other's turn.\n", data->thread_num);
+#endif
         }
 
         // unlock our data space
