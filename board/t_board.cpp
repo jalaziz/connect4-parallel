@@ -6,17 +6,17 @@
  * E-mail Peter Kirby at gmail (peterkirby) or at www.peterkirby.com.
  *
  * "Drop Four" is a clone of the "Connect Four" (tm) of Milton Bradley.
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
@@ -30,7 +30,7 @@
  * are numbered 0-5, and the columns are numbered 0-6, then the location of
  * one square in the grid is 7 * row + col. The squares contain a 0 for a
  * blank, a -1 for Player One (human), and a 1 for Player Two (computer).
- * 
+ *
  * The Board class also contains an array of 69 integers.  The first 24 are
  * the horizontal rows of four squares (quads), four in each of the six
  * different columns.  The row from square 0 to 3 is quad 0, the row from
@@ -243,7 +243,7 @@ inline int t_isGameOver(cwork_t* data)
              || data->m_cMoves == 42 );
 }
 
-inline int isGameOver( void ) 
+inline int isGameOver( void )
 {
     return (    board.m_sumStatEval > const_evalPositiveWinMin
              || board.m_sumStatEval < const_evalNegativeWinMin
@@ -451,10 +451,10 @@ int takeComputerTurn( void )
 		{
 			colMove = t_calcMinMove();
 		}
-		
+
 		move( colMove );
 	}
-	
+
 	return colMove;
 }
 
@@ -472,7 +472,7 @@ int takeBackMove( void )
 	{
 		colMove = const_colNil;
 	}
-	
+
 	return colMove;
 }
 
@@ -819,7 +819,7 @@ void t_calcMaxWork( cwork_t* data )
         if (rgMoves[iMoves] == data->thread_num) {
             t_move( rgMoves[ iMoves ], data );
             temp = t_isGameOver( data ) ? data->m_sumStatEval
-                              : t_calcMinEval( board.m_depthMax, 
+                              : t_calcMinEval( board.m_depthMax,
                                       alpha, const_bestEval, data );
             t_remove( data );
         }
@@ -1006,7 +1006,7 @@ void t_calcMinWork( cwork_t* data )
         if (rgMoves[iMoves] == data->thread_num) {
             t_move( rgMoves[ iMoves ], data );
             temp = t_isGameOver( data ) ? data->m_sumStatEval
-                              : t_calcMaxEval( board.m_depthMax, 
+                              : t_calcMaxEval( board.m_depthMax,
                                       const_worstEval, beta, data );
 
             t_remove( data );
@@ -1040,13 +1040,13 @@ int calcMaxEval( int depth, int alpha, int beta )
 
 	// if this is the end of the tree (depth now 0)
 	if (! (--depth))
-	{                 
+	{
 		for (int iMoves = 0; iMoves < movesLim; iMoves++)
         {
             if (!board.m_rgPosition[ iMoves ])
             {
                 move( iMoves );
-                
+
                 if (board.m_sumStatEval > best)
                 {
                     best = board.m_sumStatEval;
@@ -1075,7 +1075,7 @@ int calcMaxEval( int depth, int alpha, int beta )
 			if (best < temp)
 			{
 				best = temp;
-				
+
 				// Check for an alphabeta "prune" of the tree. Early exit
 				// because max has a position here that is better than another
 				// position which min could choose, so min would never allow.
@@ -1084,7 +1084,7 @@ int calcMaxEval( int depth, int alpha, int beta )
 					break;
 				}
 			}
-		}		  					 
+		}
 	}
 
 	return best;
@@ -1102,13 +1102,13 @@ int t_calcMaxEval( int depth, int alpha, int beta, cwork_t* data )
 
 	// if this is the end of the tree (depth now 0)
 	if (! (--depth))
-	{                 
+	{
 		for (int iMoves = 0; iMoves < movesLim; iMoves++)
         {
             if (!data->m_rgPosition[ iMoves ])
             {
                 t_move( iMoves, data );
-                
+
                 if (data->m_sumStatEval > best)
                 {
                     best = data->m_sumStatEval;
@@ -1137,7 +1137,7 @@ int t_calcMaxEval( int depth, int alpha, int beta, cwork_t* data )
 			if (best < temp)
 			{
 				best = temp;
-				
+
 				// Check for an alphabeta "prune" of the tree. Early exit
 				// because max has a position here that is better than another
 				// position which min could choose, so min would never allow.
@@ -1147,7 +1147,7 @@ int t_calcMaxEval( int depth, int alpha, int beta, cwork_t* data )
 					break;
 				}
 			}
-		}		  					 
+		}
 	}
 
 	return best;
@@ -1159,14 +1159,14 @@ int calcMinEval( int depth, int alpha, int beta )
 	int iMoves;
 	int temp;
 	int best = const_bestEval;
-	
+
 	// the list of valid moves, 'best' move first (descending static value)
 	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
 
 	// if this is the end of the tree (depth now 0)
 	if (! (--depth))
-	{                 
+	{
 		for (iMoves = 0; iMoves < movesLim; iMoves++)
 		{
 			if (!board.m_rgPosition[ iMoves ])
@@ -1201,7 +1201,7 @@ int calcMinEval( int depth, int alpha, int beta )
 			if (best > temp)
 			{
 				best = temp;
-				
+
 				// Check for an alphabeta "prune" of the tree. Early exit
 				// because max has a position here that is better than another
 				// position which min could choose, so min would never allow.
@@ -1222,14 +1222,14 @@ int t_calcMinEval( int depth, int alpha, int beta, cwork_t* data )
 	int iMoves;
 	int temp;
 	int best = const_bestEval;
-	
+
 	// the list of valid moves, 'best' move first (descending static value)
 	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
 
 	// if this is the end of the tree (depth now 0)
 	if (! (--depth))
-	{                 
+	{
 		for (iMoves = 0; iMoves < movesLim; iMoves++)
 		{
 			if (!data->m_rgPosition[ iMoves ])
@@ -1264,7 +1264,7 @@ int t_calcMinEval( int depth, int alpha, int beta, cwork_t* data )
 			if (best > temp)
 			{
 				best = temp;
-				
+
 				// Check for an alphabeta "prune" of the tree. Early exit
 				// because max has a position here that is better than another
 				// position which min could choose, so min would never allow.
@@ -1294,7 +1294,7 @@ void descendMoves( int* moves, int &movesLim )
 	{
 		// if the column of move i is full, take it off the list
 		// by reducing size and copying the last element into its place
-		if (board.m_rgPosition[ moves[ i ] ])  
+		if (board.m_rgPosition[ moves[ i ] ])
 		{
 			moves[ i ] = moves[ movesLim - 1 ];
 			movesLim--;
@@ -1345,7 +1345,7 @@ void t_descendMoves( int* moves, int &movesLim, cwork_t* data)
 	{
 		// if the column of move i is full, take it off the list
 		// by reducing size and copying the last element into its place
-		if (data->m_rgPosition[ moves[ i ] ])  
+		if (data->m_rgPosition[ moves[ i ] ])
 		{
 			moves[ i ] = moves[ movesLim - 1 ];
 			movesLim--;
@@ -1500,7 +1500,7 @@ void* t_main( void* args ) {
         }
         data->m_eval = 0;
         // The main board should never be more than 1 or 2 moves ahead of us
-        assert(board.m_cMoves - data->m_cMoves == 1 || 
+        assert(board.m_cMoves - data->m_cMoves == 1 ||
                 board.m_cMoves - data->m_cMoves == 2);
         printf("Thread %d: Main board has %d moves\n", data->thread_num, board.m_cMoves);
         printf("Thread %d: Our board has %d moves\n", data->thread_num, data->m_cMoves);
@@ -1640,7 +1640,7 @@ void test(int row, int col)
 	int mycol = col;
 	if (myrow <= 2 && mycol <= 3)
 		updatequad(45 + 4 * myrow + mycol);
-	
+
 	// if neither of them are 0, do it again at upperleft square
 	// note that it decrements *after* evaluation
 	if (myrow-- && mycol--)
