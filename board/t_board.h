@@ -6,17 +6,17 @@
  * E-mail Peter Kirby at gmail (peterkirby) or at www.peterkirby.com.
  *
  * "Drop Four" is a clone of the "Connect Four" (tm) of Milton Bradley.
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
@@ -34,7 +34,7 @@ const int const_posLim = MAGIC_LIMIT_POS;
 // this is an error code returned in place of a column number
 const int const_colNil = -1;
 
-// This structure holds local copies of the board for each thread and 
+// This structure holds local copies of the board for each thread and
 // is what they modify for their calculations.
 typedef struct cwork_ {
     pthread_mutex_t lock;
@@ -63,9 +63,9 @@ typedef struct result_ {
 typedef struct board_ {
     cwork_t m_twork[ MAGIC_LIMIT_COLS ]; // stores each threads work spaces
     pthread_t m_threads[ MAGIC_LIMIT_COLS ];    // stores the threads
-	int m_rgPosition[ MAGIC_LIMIT_POS ]; // stores the pieces on the board, 
+	int m_rgPosition[ MAGIC_LIMIT_POS ]; // stores the pieces on the board,
                                          // described in .cpp
-	int m_rgQuad[ MAGIC_LIMIT_QUAD ];    // stores the quads of the board, 
+	int m_rgQuad[ MAGIC_LIMIT_QUAD ];    // stores the quads of the board,
                                          // described in .cpp
 	int m_sumStatEval;                   // stores the sum of quad[1..69]
 	int m_rgHistory[ MAGIC_LIMIT_POS ];  // contain col's of previous moves
@@ -99,8 +99,8 @@ void getBoardState( int rgPosition[ MAGIC_LIMIT_POS ] );
 int isGameOver( void );
 void move( int colMove);
 void remove( void );
-int calcMaxMove( void ); 
-int calcMinMove( void ); 
+int calcMaxMove( void );
+int calcMinMove( void );
 int calcMaxEval( int depth, int alpha, int beta);
 int calcMinEval( int depth, int alpha, int beta);
 void updateQuad( int iQuad );
