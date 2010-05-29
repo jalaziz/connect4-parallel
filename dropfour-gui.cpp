@@ -55,6 +55,17 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
+	int rgBoardPos[ const_posLim ];
+	clock_t clkBefore, clkAfter;
+
+    boardInit();
+	init();
+
+	if (askfirst()) setHumanFirst();
+	else setComputerFirst();
+	
+	setDifficulty(askdifficulty());
+
     // OpenGL initialization
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
@@ -71,17 +82,6 @@ int main(int argc, char **argv)
     // Enable OpenGL transparency
     glEnable(GL_BLEND); 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	int rgBoardPos[ const_posLim ];
-	clock_t clkBefore, clkAfter;
-
-    boardInit();
-	init();
-
-	if (askfirst()) setHumanFirst();
-	else setComputerFirst();
-	
-	setDifficulty(askdifficulty());
 
     glutMainLoop();
 

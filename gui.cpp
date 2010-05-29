@@ -37,10 +37,9 @@ game_state state = prompt_column;
 int game_board[const_posLim];
 int col_preview = 3;
 bool game_over;
+bool draw_player_piece_first = false;
 
 void guiDisplay() {
-    if (state != waiting_for_input && !game_over) game_loop();
-
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // light blue "sky" background
@@ -90,6 +89,9 @@ void guiDisplay() {
     glutSolidSphere(0.475, 50, 50);
     glPopMatrix();
 
+    // game loop
+    if (state != waiting_for_input && !game_over) game_loop();
+
     // refresh the window
     glutSwapBuffers();
     glutPostRedisplay();
@@ -134,6 +136,7 @@ void key(unsigned char key, int x, int y) {
         case 13:
             move(col_preview);
             col_preview = 3;
+            draw_player_piece_first = true;
             break;
         default:
             break;
@@ -163,6 +166,11 @@ void game_loop() {
     if (isGameOver()) {
         endgame( isComputerWin() ? 1 : ( isHumanWin() ? -1 : 0 ) );
         game_over = true;
+        return;
+    }
+
+    if (draw_player_piece_first) {
+        draw_player_piece_first = false;
         return;
     }
 
