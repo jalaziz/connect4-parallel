@@ -22,6 +22,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
  */
 
+ //enable global alpha updating
+#define GLOBAL_ALPHA
+
 #define MAGIC_LIMIT_POS 42
 #define MAGIC_LIMIT_COLS 7
 #define MAGIC_LIMIT_QUAD 70
@@ -54,6 +57,7 @@ typedef struct result_ {
     pthread_cond_t cond;
     int threads_finished;
     int best;
+    int second_best;
     int best_move;
     int second_best_move;
     int alpha;

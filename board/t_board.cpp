@@ -729,6 +729,7 @@ int t_calcMaxMove(void)
     pthread_mutex_lock(&board.result.lock);
     board.result.alpha = alpha;
     board.result.best = best;
+    board.result.second_best = best;
     board.result.best_move = rgMoves[ 0 ];
     board.result.second_best_move = rgMoves[ 0 ];
     pthread_mutex_unlock(&board.result.lock);
@@ -846,9 +847,13 @@ void t_calcMaxWork( cwork_t* data )
     board.result.threads_finished++;
     // if this threads result is better, update best moves
     if (board.result.best < temp) {
+        board.result.second_best = board.result.best;
         board.result.best = temp;
         board.result.second_best_move = board.result.best_move;
         board.result.best_move = data->thread_num;
+    }else if (board.result.second_best < temp) {
+        board.result.second_best = temp;
+        board.result.second_best_move = data->thread_num;
     }
     // if this is the last thread to return, signal main thread
     if (board.result.threads_finished == MAGIC_LIMIT_COLS) {
@@ -1170,13 +1175,23 @@ int t_calcMaxEval( int depth, int alpha, int beta, cwork_t* data )
 				// position which min could choose, so min would never allow.
 				if (temp >= beta)
 				{
-                    //printf("Thread %d: Pruned!\n", data->thread_num);
+#ifdef DEBUG_THREAD
+					printf("Thread %d: at depth=%d Pruned best(%d) < temp(%d) >= beta(%d)!\n", 
+						data->thread_num, board.m_depthMax-depth, best, temp, beta);
+#endif
 					break;
 				}
 			}
 		}
 	}
 
+#ifdef DEBUG_THREAD
+	//if (data->thread_num==3 || data->thread_num==5) {
+	if (1) {
+		printf("Thread %d: at depth=%d, max eval return %d\n", data->thread_num, board.m_depthMax-depth, best);
+		fflush(stdout);
+	}
+#endif
 	return best;
 }
 
@@ -1283,6 +1298,16 @@ int t_calcMinEval( int depth, int alpha, int beta, cwork_t* data )
 		// for every daughter
 		for(iMoves = 0; iMoves < movesLim; iMoves++)
 		{
+			if (board.m_depthMax-depth==1) {
+				pthread_mutex_lock(&board.result.lock);
+#ifdef DEBUG_THREAD
+				printf("Thread %d: at depth=%d update local alpha from %d to %d\n", 
+					data->thread_num, board.m_depthMax-depth, alpha, board.result.alpha);
+				fflush(stdout);
+#endif
+				alpha = board.result.alpha;
+				pthread_mutex_unlock(&board.result.lock);
+			}
 			t_move( rgMoves[ iMoves ], data );
 			temp = t_isGameOver( data ) ? data->m_sumStatEval
 			                    : t_calcMaxEval( depth, alpha, best, data );
@@ -1297,13 +1322,37 @@ int t_calcMinEval( int depth, int alpha, int beta, cwork_t* data )
 				// position which min could choose, so min would never allow.
 				if (temp <= alpha)
 				{
-                    //printf("Thread %d: Pruned!\n", data->thread_num);
+#ifdef DEBUG_THREAD
+					printf("Thread %d: at depth=%d Pruned best(%d) < temp(%d) <= alpha(%d)!\n", 
+						data->thread_num, board.m_depthMax-depth, best, temp, alpha);
+#endif
 					break;
 				}
 			}
 		}
 	}
 
+	if (board.m_depthMax-depth==1) {
+		pthread_mutex_lock(&board.result.lock);
+		if (best > board.result.alpha) {
+#ifdef DEBUG_THREAD
+			printf("Thread %d: at depth=%d update global alpha from %d to %d\n", 
+				data->thread_num, board.m_depthMax-depth, board.result.alpha, best);
+			fflush(stdout);
+#endif
+#ifdef GLOBAL_ALPHA
+			board.result.alpha = best;
+#endif
+		}
+		pthread_mutex_unlock(&board.result.lock);
+	}
+#ifdef DEBUG_THREAD
+	//if (data->thread_num==3 || data->thread_num==5) {
+	if (1) {
+		printf("Thread %d: at depth=%d, min eval return %d\n", data->thread_num, board.m_depthMax-depth, best);
+		fflush(stdout);
+	}
+#endif
 	return best;
 }
 
@@ -1558,7 +1607,7 @@ void* t_main( void* args ) {
 		if ( board.m_fIsComputerTurn )
 	   	{
 #ifdef debug
-            printf("Thread %d: Comp's turn.\n", data->thread_num);
+            printf("Thread %d: Comp's turn. search depth is %d\n", data->thread_num, board.m_depthMax);
 #endif
             t_calcMaxWork( data );
 		}
