@@ -50,7 +50,6 @@ using namespace std;
 #include <stdlib.h>
 #include "ioface.h"
 #include "board/board.h"
-using namespace DropFour;
 
 int main()
 {
