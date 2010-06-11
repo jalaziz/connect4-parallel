@@ -98,6 +98,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <assert.h>
+#include <string.h>
 #include "t_board.h"
 
 //#define debug
@@ -238,90 +239,25 @@ const int const_rgUpEval[] = {
 	0
 };
 
-inline int t_isGameOver(cwork_t* data)
+inline int isGameOver( board_t *b )
 {
-    return (    data->m_sumStatEval > const_evalPositiveWinMin
-             || data->m_sumStatEval < const_evalNegativeWinMin
-             || data->m_cMoves == 42 );
-}
-
-inline int isGameOver( void ) 
-{
-    return (    board.m_sumStatEval > const_evalPositiveWinMin
-             || board.m_sumStatEval < const_evalNegativeWinMin
-             || board.m_cMoves == 42 );
+    return (    b->m_sumStatEval > const_evalPositiveWinMin
+             || b->m_sumStatEval < const_evalNegativeWinMin
+             || b->m_cMoves == 42 );
 }
 
 void boardInit()
 {
-	int iPosition;
-	int iQuad;
-    int iThread;
-
 	// set it all to zero
-	for (iPosition = 0; iPosition < const_posLim; iPosition++)
-	{
-		board.m_rgPosition[ iPosition ] = 0;
-	}
+	memset(&board, 0, sizeof(board));
 
-	for (iQuad = 0; iQuad < const_quadLim; iQuad++)
-    {
-		board.m_rgQuad[ iQuad ] = 0;
-    }
-
-	board.m_sumStatEval = 0;
-    board.m_cMoves = 0;
-
-	// it is human's turn by default, and a given difficulty by default
-	board.m_fIsComputerTurn = 0;
     // set the default difficulty
 	setDifficulty( const_defaultDifficulty );
-
-    // initialize our results struct
-    pthread_mutex_init(&board.result.lock, NULL);
-    pthread_cond_init(&board.result.cond, NULL);
-    board.result.threads_finished = 0;
-    board.result.best_move = const_colNil;
-    board.result.second_best_move = const_colNil;
-
-    // set up our threads.
-    for (iThread = 0; iThread < MAGIC_LIMIT_COLS; iThread++) {
-        // initialize our pthread library variables
-        pthread_mutex_init(&(board.m_twork[iThread].lock), NULL);
-        pthread_cond_init(&(board.m_twork[iThread].cond), NULL);
-        // set our thread number
-        board.m_twork[iThread].thread_num = iThread;
-        // set our other values to zero
-        board.m_twork[iThread].m_sumStatEval = 0;
-        board.m_twork[iThread].m_cMoves = 0;
-        board.m_twork[iThread].m_fIsComputerTurn = 0;
-        board.m_twork[iThread].m_eval = 0;
-        for (iPosition = 0; iPosition < const_posLim; iPosition++)
-        {
-            board.m_twork[iThread].m_rgPosition[ iPosition ] = 0;
-        }
-
-        for (iQuad = 0; iQuad < const_quadLim; iQuad++)
-        {
-            board.m_twork[iThread].m_rgQuad[ iQuad ] = 0;
-        }
-        pthread_create(&board.m_threads[iThread], NULL, t_main, (void*) &board.m_twork[iThread]);
-    }
 }
 
 // returns the number of moves that have been taken
 int getNumMoves( void ) {
     return board.m_cMoves;
-}
-
-// returns the most recent taken move
-int getLastMove( void ) {
-    return board.m_rgHistory[board.m_cMoves - 1];
-}
-
-// returns the second to most recent taken move
-int getSecondToLastMove( void ) {
-    return board.m_rgHistory[board.m_cMoves - 2];
 }
 
 // returns 1 if computer won (max), 0 otherwise
@@ -343,93 +279,74 @@ int isComputerTurn( void )
 
 // if passed correctly, set the difficulty
 // if not passed correctly, set to default difficulty
-void setDifficulty( int difficulty )
+void setDifficulty( int diff )
 {
-    int iThreads;
-
-	if (difficulty < 0 || difficulty > 9)
+	if (diff < 0 || diff > 9)
 	{
-		difficulty = const_defaultDifficulty;
+		diff = const_defaultDifficulty;
 	}
 
     // set the board difficulty
-   	board.m_difficulty = difficulty;
+   	difficulty = diff;
 
-	switch ( board.m_difficulty )
+	switch ( difficulty )
 	{
 	case 0:
 	case 1:
 	case 2:
 	case 3:
 	case 4:
-		board.m_depthMax = board.m_difficulty + 1;
-		board.m_chancePickBest = 0.1 * (board.m_difficulty + 1);
-		board.m_chancePickSecondBest = board.m_chancePickBest;
+		depthMax = difficulty + 1;
+//		board.m_chancePickBest = 0.1 * (board.m_difficulty + 1);
+//		board.m_chancePickSecondBest = board.m_chancePickBest;
 		break;
 	case 5:
 	case 6:
 	case 7:
-		board.m_depthMax = 5 + 2 * ( board.m_difficulty - 4 );
-		board.m_chancePickBest = 0.1 * (board.m_difficulty + 1);
-		board.m_chancePickSecondBest = 1.0 - board.m_chancePickBest;
+		depthMax = 5 + 2 * ( difficulty - 4 );
+//		board.m_chancePickBest = 0.1 * (board.m_difficulty + 1);
+//		board.m_chancePickSecondBest = 1.0 - board.m_chancePickBest;
 		break;
 	case 8:
 	case 9:
-		board.m_depthMax = 11 + 3 * ( board.m_difficulty - 7 );
-		board.m_chancePickBest = 0.1 * (board.m_difficulty + 1);
-		board.m_chancePickSecondBest = 1.0 - board.m_chancePickBest;
+		depthMax = 11 + 3 * ( difficulty - 7 );
+//		board.m_chancePickBest = 0.1 * (board.m_difficulty + 1);
+//		board.m_chancePickSecondBest = 1.0 - board.m_chancePickBest;
 		break;
 	}
 
-    // seed our random function
-	srand( (unsigned)time( NULL ) );
+//    // seed our random function
+//	srand( (unsigned)time( NULL ) );
 }
 
 void setHumanFirst( void )
 {
-    int iThreads;
     // set the boards first turn
 	board.m_fIsComputerTurn = 0;
-    // set the threads' first turn as well
-    for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
-        pthread_mutex_lock(&board.m_twork[iThreads].lock);
-        board.m_twork[iThreads].m_fIsComputerTurn = 0;
-        pthread_mutex_unlock(&board.m_twork[iThreads].lock);
-    }
 }
 
 void setComputerFirst( void )
 {
-    int iThreads;
     // set the boards first turn
 	board.m_fIsComputerTurn = 1;
-    // set the threads' first turn as well
-    for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
-        pthread_mutex_lock(&board.m_twork[iThreads].lock);
-        board.m_twork[iThreads].m_fIsComputerTurn = 1;
-        pthread_mutex_unlock(&board.m_twork[iThreads].lock);
-    }
 }
 
-void getBoardState( int rgPosition[ const_posLim ] )
+void getBoardState( char rgPosition[ const_posLim ] )
 {
-	for (int iPosition = 0; iPosition < const_posLim; iPosition++ )
-	{
-		rgPosition[ iPosition ] = board.m_rgPosition[ iPosition ];
-	}
+	memcpy(rgPosition, board.m_rgPosition, sizeof(char) * const_posLim);
 }
 
 // returns mconst_colNil on error, the column where move was made on success
 int takeHumanTurn( int colMove )
 {
-	if ( isGameOver()
+	if ( isGameOver(&board)
 	     || colMove < 0 || colMove > 6 || board.m_rgPosition[ colMove ] )
 	{
 		colMove = const_colNil;
 	}
 	else
 	{
-		move( colMove );
+		move( &board, colMove );
 	}
 
 	return colMove;
@@ -439,7 +356,7 @@ int takeComputerTurn( void )
 {
 	int colMove;
 
-	if (isGameOver())
+	if (isGameOver(&board))
 	{
 		colMove = const_colNil;
 	}
@@ -447,105 +364,51 @@ int takeComputerTurn( void )
 	{
 		if ( board.m_fIsComputerTurn )
 	   	{
-			colMove = t_calcMaxMove();
+			colMove = calcMaxMove();
 		}
 		else
 		{
-			colMove = t_calcMinMove();
+			colMove = calcMinMove();
 		}
 		
-		move( colMove );
+		move( &board, colMove );
 	}
 	
 	return colMove;
 }
 
-// returns the column the piece was taken from
-int takeBackMove( void )
-{
-	int colMove;
-
-	if ( board.m_cMoves )
-	{
-		remove();
-		colMove = board.m_rgHistory[ board.m_cMoves ];
-	}
-	else
-	{
-		colMove = const_colNil;
-	}
-	
-	return colMove;
-}
-
-void move( int colMove )
+void move(board_t *b, int colMove )
 {
 	int quadTemp;
 	const int* pQuads;
-	int* colBase;
+	char* colBase;
 	int rowBySevens;
 	int square;
 
-	// add the latest move to history
-	board.m_rgHistory[ board.m_cMoves++ ] = colMove;
+	b->m_cMoves++;
 
 	// find the lowest blank in column, thus setting the row
-	colBase = board.m_rgPosition + 35 + colMove; // i.e., bottom row, same column
+	colBase = b->m_rgPosition + 35 + colMove; // i.e., bottom row, same column
 	rowBySevens = (*colBase ? (colBase[-7] ? (colBase[-14] ? (colBase[-21] ?
 	               (colBase[-28] ? 0 : 7) : 14) : 21) : 28) : 35);
 	square = rowBySevens + colMove;
 
 	// set this position's value to -1 for human, 1 for computer
 	// (whoever's turn it is)
-	board.m_rgPosition[ square ] = ( board.m_fIsComputerTurn ? 1 : -1 );
+	b->m_rgPosition[ square ] = ( b->m_fIsComputerTurn ? 1 : -1 );
 
 	// update the quads for this position
 	pQuads = const_mpPosQuads[ square ];
-	updateQuad(*pQuads++);
-	updateQuad(*pQuads++);
-	updateQuad(*pQuads++);
+	updateQuad(b, *pQuads++);
+	updateQuad(b, *pQuads++);
+	updateQuad(b, *pQuads++);
 	while ( quadTemp = *pQuads++ )
 	{
-		updateQuad( quadTemp );
+		updateQuad(b, quadTemp );
 	}
 
 	// give the other guy a turn
-	board.m_fIsComputerTurn = !board.m_fIsComputerTurn;
-}
-
-void t_move( int colMove, cwork_t* data )
-{
-	int quadTemp;
-	const int* pQuads;
-	int* colBase;
-	int rowBySevens;
-	int square;
-
-	// add the latest move to history
-	data->m_rgHistory[ (data->m_cMoves)++ ] = colMove;
-
-	// find the lowest blank in column, thus setting the row
-	colBase = data->m_rgPosition + 35 + colMove; // i.e., bottom row, same column
-	rowBySevens = (*colBase ? (colBase[-7] ? (colBase[-14] ? (colBase[-21] ?
-	               (colBase[-28] ? 0 : 7) : 14) : 21) : 28) : 35);
-	square = rowBySevens + colMove;
-
-	// set this position's value to -1 for human, 1 for computer
-	// (whoever's turn it is)
-	data->m_rgPosition[ square ] = ( data->m_fIsComputerTurn ? 1 : -1 );
-
-	// update the quads for this position
-	pQuads = const_mpPosQuads[ square ];
-	t_updateQuad(*pQuads++, data);
-	t_updateQuad(*pQuads++, data);
-	t_updateQuad(*pQuads++, data);
-	while ( quadTemp = *pQuads++ )
-	{
-		t_updateQuad( quadTemp, data );
-	}
-
-	// give the other guy a turn
-	data->m_fIsComputerTurn = !data->m_fIsComputerTurn;
+	b->m_fIsComputerTurn = !b->m_fIsComputerTurn;
 }
 
 // The least significant bit has a 0 for human's turn, 1 for computer's.
@@ -554,307 +417,73 @@ void t_move( int colMove, cwork_t* data )
 // The quadcode is elaborated a bit more above, where the data arrays
 // are declared. This function will update the quadcode and the stateval
 // based on the addition of max (odd, i.e. +1) or min (even, i.e., +0)
-inline void updateQuad( int iQuad )
+inline void updateQuad( board_t *b, int iQuad )
 {
-	int quadcode = board.m_rgQuad[ iQuad ] + board.m_fIsComputerTurn;
-	board.m_rgQuad[ iQuad ] = const_rgUpQuadcode[ quadcode ];
-	board.m_sumStatEval += const_rgUpEval[ quadcode ];
-}
-
-inline void t_updateQuad( int iQuad, cwork_t* data )
-{
-	int quadcode = data->m_rgQuad[ iQuad ] + data->m_fIsComputerTurn;
-	data->m_rgQuad[ iQuad ] = const_rgUpQuadcode[ quadcode ];
-	data->m_sumStatEval += const_rgUpEval[ quadcode ];
-}
-
-// This function cannot be called if m_cMoves is 0. It does not check for
-// that case, because it is a private member function optimized for speed.
-void remove( void )
-{
-	int quadTemp;
-	const int* pQuads;
-	int* colBase;
-	int rowBySevens;
-	int square;
-
-	// decrement movenum, retrieve last move
-	int colMove = board.m_rgHistory[ --board.m_cMoves ];
-
-	// find the highest occupied square
-	colBase = board.m_rgPosition + colMove;
-	rowBySevens = (*colBase) ? 0 : (colBase[7] ? 7 : (colBase[14] ? 14 :
-	              (colBase[21] ? 21 : (colBase[28] ? 28 : 35))));
-	square = rowBySevens + colMove;
-
-	// if removing comp, now comp's turn; else human's if removing human
-	board.m_fIsComputerTurn = !board.m_fIsComputerTurn;
-
-	// set this position's value back to 0
-	board.m_rgPosition[ square ] = 0;
-
-	// reset the quads for this position
-	pQuads = const_mpPosQuads[ square ];
-	downdateQuad( *pQuads++ );
-	downdateQuad( *pQuads++ );
-	downdateQuad( *pQuads++ );
-	while (quadTemp = *pQuads++)
-	{
-		downdateQuad( quadTemp );
-	}
-}
-
-void t_remove( cwork_t* data )
-{
-	int quadTemp;
-	const int* pQuads;
-	int* colBase;
-	int rowBySevens;
-	int square;
-
-	// decrement movenum, retrieve last move
-	int colMove = data->m_rgHistory[ --(data->m_cMoves) ];
-
-	// find the highest occupied square
-	colBase = data->m_rgPosition + colMove;
-	rowBySevens = (*colBase) ? 0 : (colBase[7] ? 7 : (colBase[14] ? 14 :
-	              (colBase[21] ? 21 : (colBase[28] ? 28 : 35))));
-	square = rowBySevens + colMove;
-
-	// if removing comp, now comp's turn; else human's if removing human
-	data->m_fIsComputerTurn = !data->m_fIsComputerTurn;
-
-	// set this position's value back to 0
-	data->m_rgPosition[ square ] = 0;
-
-	// reset the quads for this position
-	pQuads = const_mpPosQuads[ square ];
-	t_downdateQuad( *pQuads++, data );
-	t_downdateQuad( *pQuads++, data );
-	t_downdateQuad( *pQuads++, data );
-	while (quadTemp = *pQuads++)
-	{
-		t_downdateQuad( quadTemp, data );
-	}
-}
-
-inline void downdateQuad( int iQuad )
-{
-	board.m_rgQuad[ iQuad ] = const_rgDownQuadcode[ board.m_rgQuad[ iQuad ] + board.m_fIsComputerTurn ];
-	board.m_sumStatEval -= const_rgUpEval[ board.m_rgQuad[ iQuad ] + board.m_fIsComputerTurn ];
-}
-
-inline void t_downdateQuad( int iQuad, cwork_t* data )
-{
-	data->m_rgQuad[ iQuad ] = const_rgDownQuadcode[ data->m_rgQuad[ iQuad ] + data->m_fIsComputerTurn ];
-	data->m_sumStatEval -= const_rgUpEval[ data->m_rgQuad[ iQuad ] + data->m_fIsComputerTurn ];
+	int quadcode = b->m_rgQuad[ iQuad ] + b->m_fIsComputerTurn;
+	b->m_rgQuad[ iQuad ] = const_rgUpQuadcode[ quadcode ];
+	b->m_sumStatEval += const_rgUpEval[ quadcode ];
 }
 
 int calcMaxMove(void)
 {
 	// the root node is max, and so has an alpha value.
-	int iMoves,iThreads;
+	int iMoves;
 	int temp;
 	int alpha = const_worstEval;
 	int best = const_worstEval - 1;
 	int bestmove;
-	int secondbestmove;
-	double randomchance;
+
+	// some initial pthread stuff
+	pthread_t threads[7];
+	pthread_attr_t attr;
+	pthread_attr_init (&attr);
+	work_t childWork[7];
 
 	// the list of valid moves, 'best' move first (descending static value)
 	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
-	descendMoves( rgMoves, movesLim );
+
+	// Remove unavailable moves
+	removeNonMoves(&board, rgMoves, &movesLim);
 
     // as a default set the best and second best to the statically best move
-	bestmove = secondbestmove = rgMoves[ 0 ];
+	bestmove = rgMoves[ 0 ];
 
 #ifdef debug
     printf("Main board has %d moves\n", board.m_cMoves);
 #endif
 
+    for(iMoves = 0; iMoves < movesLim; iMoves++)
+    {
+    	childWork[iMoves].move = rgMoves[iMoves];
+    	childWork[iMoves].alpha = alpha;
+    	childWork[iMoves].beta = const_bestEval;
+    	childWork[iMoves].depth = depthMax;
+    	childWork[iMoves].board = board;
+
+    	pthread_create(&threads[iMoves], &attr, t_calcMaxMove, (void *)&childWork[iMoves]);
+    }
+
     // for each move in the rgMoves array, evaluate the move
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
 	{
-		move( rgMoves[ iMoves ] );
-		temp = isGameOver() ? board.m_sumStatEval
-		                  : calcMinEval( board.m_depthMax, alpha, const_bestEval );
-		remove();
+		result_t * result;
+		pthread_join(threads[iMoves], (void **)&result);
+		temp = result->move_value;
 
 		if (best < temp)
 		{
+#ifdef debug
+			printf("New best move: %d with value %d\n", temp, rgMoves[iMoves]);
+#endif
 			best = alpha = temp;
-			secondbestmove = bestmove;
-			bestmove = rgMoves[ iMoves ];
+			bestmove = rgMoves[iMoves];
 		}
+
+		free(result);
 	}
-    // get results from threads here.
 
-    // select randomly which move to return
-	randomchance = rand() / (1.0 + (double)RAND_MAX);
-	if ( randomchance < board.m_chancePickBest )
-	{
-		return bestmove;
-	}
-	else if ( randomchance < board.m_chancePickBest + board.m_chancePickSecondBest )
-	{
-		return secondbestmove;
-	}
-	else
-	{
-		randomchance = rand() / (1.0 + (double)RAND_MAX);
-		return rgMoves[ (int) (randomchance * movesLim) ];
-	}
-}
-
-int t_calcMaxMove(void)
-{
-	// the root node is max, and so has an alpha value.
-	int iMoves,iThreads;
-	int temp;
-	int alpha = const_worstEval;
-	int best = const_worstEval - 1;
-	int bestmove;
-	int secondbestmove;
-	double randomchance;
-
-	// the list of valid moves, 'best' move first (descending static value)
-	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
-	int movesLim = sizeof( rgMoves ) / sizeof( int );
-	descendMoves( rgMoves, movesLim );
-
-    // as a default set the best and second best to the statically best move
-	bestmove = secondbestmove = rgMoves[ 0 ];
-
-    pthread_mutex_lock(&board.result.lock);
-    board.result.alpha = alpha;
-    board.result.best = best;
-    board.result.best_move = rgMoves[ 0 ];
-    board.result.second_best_move = rgMoves[ 0 ];
-    pthread_mutex_unlock(&board.result.lock);
-
-#ifdef debug
-    printf("Main board has %d moves\n", board.m_cMoves);
-#endif
-
-    // Start threads doing a cycle of their work.
-    for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
-        pthread_mutex_lock(&board.m_twork[iThreads].lock);
-        board.m_twork[iThreads].m_eval = 1;
-        pthread_cond_signal(&board.m_twork[iThreads].cond);
-        pthread_mutex_unlock(&board.m_twork[iThreads].lock);
-    }
-
-
-#ifdef debug
-    printf("Main thread going to sleep\n");
-#endif
-
-    // Wait for threads to be done.
-    pthread_mutex_lock(&board.result.lock);
-    while (board.result.threads_finished != MAGIC_LIMIT_COLS) {
-        pthread_cond_wait(&board.result.cond, &board.result.lock);
-    }
-    // get the thread results.
-    bestmove = board.result.best_move;
-    secondbestmove = board.result.second_best_move;
-
-#ifdef debug
-    printf("Thread results are #1: %d and #2: %d\n", bestmove, secondbestmove);
-#endif
-    board.result.best_move = const_colNil;
-    board.result.second_best_move = const_colNil;
-    board.result.threads_finished = 0;
-    pthread_mutex_unlock(&board.result.lock);
-
-#ifdef debug
-    printf("Main thread awoken.\n");
-#endif
-
-    // for each move in the rgMoves array, evaluate the move
-    /*
-	for(iMoves = 0; iMoves < movesLim; iMoves++)
-	{
-		move( rgMoves[ iMoves ] );
-		temp = isGameOver() ? board.m_sumStatEval
-		                  : calcMinEval( board.m_depthMax, alpha, const_bestEval );
-		remove();
-
-		if (best < temp)
-		{
-			best = alpha = temp;
-			secondbestmove = bestmove;
-			bestmove = rgMoves[ iMoves ];
-		}
-	}
-    */
-    // get results from threads here.
-
-    // select randomly which move to return
-	randomchance = rand() / (1.0 + (double)RAND_MAX);
-	if ( randomchance < board.m_chancePickBest )
-	{
-		return bestmove;
-	}
-	else if ( randomchance < board.m_chancePickBest + board.m_chancePickSecondBest )
-	{
-		return secondbestmove;
-	}
-	else
-	{
-		randomchance = rand() / (1.0 + (double)RAND_MAX);
-		return rgMoves[ (int) (randomchance * movesLim) ];
-	}
-}
-
-void t_calcMaxWork( cwork_t* data )
-{
-	// the root node is max, and so has an alpha value.
-    int iMoves;
-	int temp;
-	int alpha = const_worstEval;
-	int best = const_worstEval - 1;
-	int bestmove;
-	int secondbestmove;
-	double randomchance;
-
-	// the list of valid moves, 'best' move first (descending static value)
-	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
-	int movesLim = sizeof( rgMoves ) / sizeof( int );
-	t_descendMoves( rgMoves, movesLim, data );
-
-    // as a default set the best and second best to the statically best move
-	bestmove = secondbestmove = rgMoves[ 0 ];
-
-    // if our column is in the moves array, evaluate it
-	for(iMoves = 0; iMoves < movesLim; iMoves++)
-	{
-        if (rgMoves[iMoves] == data->thread_num) {
-            t_move( rgMoves[ iMoves ], data );
-            temp = t_isGameOver( data ) ? data->m_sumStatEval
-                              : t_calcMinEval( board.m_depthMax, 
-                                      alpha, const_bestEval, data );
-            t_remove( data );
-        }
-	}
-#ifdef debug
-    printf("Thread %d: best was %d\n", data->thread_num, temp);
-#endif
-
-    // put result in result
-    pthread_mutex_lock(&board.result.lock);
-    board.result.threads_finished++;
-    // if this threads result is better, update best moves
-    if (board.result.best < temp) {
-        board.result.best = temp;
-        board.result.second_best_move = board.result.best_move;
-        board.result.best_move = data->thread_num;
-    }
-    // if this is the last thread to return, signal main thread
-    if (board.result.threads_finished == MAGIC_LIMIT_COLS) {
-        pthread_cond_signal(&board.result.cond);
-    }
-    pthread_mutex_unlock(&board.result.lock);
+    return bestmove;
 }
 
 int calcMinMove(void)
@@ -865,941 +494,289 @@ int calcMinMove(void)
 	int beta = const_bestEval;
 	int best = const_bestEval + 1;
 	int bestmove;
-	int secondbestmove;
-	double randomchance;
+
+	// some initial pthread stuff
+	pthread_t threads[7];
+	pthread_attr_t attr;
+	pthread_attr_init (&attr);
+	work_t childWork[7];
 
 	// the list of valid moves, 'best' move first (descending static value)
 	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
-	ascendMoves( rgMoves, movesLim );
+
+	// Remove unavailable moves
+	removeNonMoves(&board, rgMoves, &movesLim);
 
 #ifdef debug
     printf("Main board has %d moves\n", board.m_cMoves);
 #endif
 
-	bestmove = secondbestmove = rgMoves[ 0 ];
+	bestmove = rgMoves[ 0 ];
 
 	for(iMoves = 0; iMoves < movesLim; iMoves++)
 	{
-		move( rgMoves[ iMoves ] );
+		childWork[iMoves].move = rgMoves[iMoves];
+		childWork[iMoves].alpha = const_worstEval;
+		childWork[iMoves].beta = beta;
+		childWork[iMoves].depth = depthMax;
+		childWork[iMoves].board = board;
 
-		temp = isGameOver() ? board.m_sumStatEval
-		                  : calcMaxEval( board.m_depthMax, const_worstEval, beta );
+		pthread_create(&threads[iMoves], &attr, t_calcMinMove, (void *)&childWork[iMoves]);
+	}
 
-		remove();
+	// for each move in the rgMoves array, evaluate the move
+	for(iMoves = 0; iMoves < movesLim; iMoves++)
+	{
+		result_t * result;
+		pthread_join(threads[iMoves], (void **)&result);
+		temp = result->move_value;
 
 		if (best > temp)
 		{
+#ifdef debug
+			printf("New best move: %d with value %d\n", temp, rgMoves[iMoves]);
+#endif
 			best = beta = temp;
-			secondbestmove = bestmove;
-			bestmove = rgMoves[ iMoves ];
+			bestmove = rgMoves[iMoves];
 		}
+
+		free(result);
 	}
 
-	randomchance = rand() / (1.0 + (double)RAND_MAX);
-	if ( randomchance < board.m_chancePickBest )
-	{
-		return bestmove;
-	}
-	else if ( randomchance < board.m_chancePickBest + board.m_chancePickSecondBest )
-	{
-		return secondbestmove;
-	}
-	else
-	{
-		randomchance = rand() / (1.0 + (double)RAND_MAX);
-		return rgMoves[ (int) (randomchance * movesLim) ];
-	}
+	return bestmove;
 }
 
-int t_calcMinMove(void)
-{
-	// the root is min, and therefore has a beta value
-	int iMoves, iThreads;
-	int temp;
-	int beta = const_bestEval;
-	int best = const_bestEval + 1;
-	int bestmove;
-	int secondbestmove;
-	double randomchance;
-
-	// the list of valid moves, 'best' move first (descending static value)
-	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
-	int movesLim = sizeof( rgMoves ) / sizeof( int );
-	ascendMoves( rgMoves, movesLim );
-
-	bestmove = secondbestmove = rgMoves[ 0 ];
-    pthread_mutex_lock(&board.result.lock);
-    board.result.beta = beta;
-    board.result.best = best;
-    board.result.best_move = rgMoves[ 0 ];
-    board.result.second_best_move = rgMoves[ 0 ];
-    pthread_mutex_unlock(&board.result.lock);
-
-#ifdef debug
-    printf("Main board has %d moves\n", board.m_cMoves);
-#endif
-
-    // Start threads doing a cycle of their work.
-    for (iThreads = 0; iThreads < MAGIC_LIMIT_COLS; iThreads++) {
-        pthread_mutex_lock(&board.m_twork[iThreads].lock);
-        board.m_twork[iThreads].m_eval = 1;
-        pthread_cond_signal(&board.m_twork[iThreads].cond);
-        pthread_mutex_unlock(&board.m_twork[iThreads].lock);
-    }
-
-#ifdef debug
-    printf("Main thread going to sleep\n");
-#endif
-
-    // Wait for threads to be done.
-    pthread_mutex_lock(&board.result.lock);
-    while (board.result.threads_finished != MAGIC_LIMIT_COLS) {
-        pthread_cond_wait(&board.result.cond, &board.result.lock);
-    }
-    // get the thread results.
-    bestmove = board.result.best_move;
-    secondbestmove = board.result.second_best_move;
-
-#ifdef debug
-    printf("Thread results are #1: %d and #2: %d\n", bestmove, secondbestmove);
-#endif
-    board.result.best_move = const_colNil;
-    board.result.second_best_move = const_colNil;
-    board.result.threads_finished = 0;
-    pthread_mutex_unlock(&board.result.lock);
-
-#ifdef debug
-    printf("Main thread awoken.\n");
-#endif
-
-    /*
-	for(iMoves = 0; iMoves < movesLim; iMoves++)
-	{
-		move( rgMoves[ iMoves ] );
-
-		temp = isGameOver() ? board.m_sumStatEval
-		                  : calcMaxEval( board.m_depthMax, const_worstEval, beta );
-
-		remove();
-
-		if (best > temp)
-		{
-			best = beta = temp;
-			secondbestmove = bestmove;
-			bestmove = rgMoves[ iMoves ];
-		}
-	}
-    */
-
-	randomchance = rand() / (1.0 + (double)RAND_MAX);
-	if ( randomchance < board.m_chancePickBest )
-	{
-		return bestmove;
-	}
-	else if ( randomchance < board.m_chancePickBest + board.m_chancePickSecondBest )
-	{
-		return secondbestmove;
-	}
-	else
-	{
-		randomchance = rand() / (1.0 + (double)RAND_MAX);
-		return rgMoves[ (int) (randomchance * movesLim) ];
-	}
-}
-
-void t_calcMinWork( cwork_t* data )
-{
-	// the root is min, and therefore has a beta value
-	int iMoves;
-	int temp;
-	int beta = const_bestEval;
-	int best = const_bestEval + 1;
-	int bestmove;
-	int secondbestmove;
-	double randomchance;
-
-	// the list of valid moves, 'best' move first (descending static value)
-	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
-	int movesLim = sizeof( rgMoves ) / sizeof( int );
-	ascendMoves( rgMoves, movesLim );
-
-	bestmove = secondbestmove = rgMoves[ 0 ];
-
-	for(iMoves = 0; iMoves < movesLim; iMoves++)
-	{
-        if (rgMoves[iMoves] == data->thread_num) {
-            t_move( rgMoves[ iMoves ], data );
-            temp = t_isGameOver( data ) ? data->m_sumStatEval
-                              : t_calcMaxEval( board.m_depthMax, 
-                                      const_worstEval, beta, data );
-
-            t_remove( data );
-        }
-	}
-#ifdef debug
-    printf("Thread %d: best was %d\n", data->thread_num, temp);
-#endif
-    pthread_mutex_lock(&board.result.lock);
-    board.result.threads_finished++;
-    // if this threads result is better, update best moves
-    if (board.result.best > temp) {
-        board.result.best = temp;
-        board.result.second_best_move = board.result.best_move;
-        board.result.best_move = data->thread_num;
-    }
-    // if this is the last thread to return, signal main thread
-    if (board.result.threads_finished == MAGIC_LIMIT_COLS) {
-        pthread_cond_signal(&board.result.cond);
-    }
-    pthread_mutex_unlock(&board.result.lock);
-}
-
-int calcMaxEval( int depth, int alpha, int beta )
-{
-	int iMoves;
-	int temp;
-	int best = const_worstEval;
-
-	// the list of valid moves, 'best' move first (descending static value)
-	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
-	int movesLim = sizeof( rgMoves ) / sizeof( int );
-
-	// if this is the end of the tree (depth now 0)
-	if (! (--depth))
-	{                 
-		for (int iMoves = 0; iMoves < movesLim; iMoves++)
-        {
-            if (!board.m_rgPosition[ iMoves ])
-            {
-                move( iMoves );
-                
-                if (board.m_sumStatEval > best)
-                {
-                    best = board.m_sumStatEval;
-                }
-
-                remove();
-            }
-        }
-	}
-	else
-	{
-		descendMoves(rgMoves, movesLim);
-
-		// cut branching factor to mconst_branchFactorMax
-		movesLim = (movesLim > const_branchFactorMax)
-		           ? const_branchFactorMax : movesLim;
-
-		// for every daughter
-		for(iMoves = 0; iMoves < movesLim; iMoves++)
-		{
-			move( rgMoves[ iMoves ]);
-			temp = isGameOver() ? board.m_sumStatEval
-			                    : calcMinEval( depth, best, beta );
-			remove();
-
-			if (best < temp)
-			{
-				best = temp;
-				
-				// Check for an alphabeta "prune" of the tree. Early exit
-				// because max has a position here that is better than another
-				// position which min could choose, so min would never allow.
-				if (temp >= beta)
-				{
-					break;
-				}
-			}
-		}		  					 
-	}
-
-	return best;
-}
-
-int t_calcMaxEval( int depth, int alpha, int beta, cwork_t* data )
-{
-	int iMoves;
-	int temp;
-	int best = const_worstEval;
-
-	// the list of valid moves, 'best' move first (descending static value)
-	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
-	int movesLim = sizeof( rgMoves ) / sizeof( int );
-
-	// if this is the end of the tree (depth now 0)
-	if (! (--depth))
-	{                 
-		for (int iMoves = 0; iMoves < movesLim; iMoves++)
-        {
-            if (!data->m_rgPosition[ iMoves ])
-            {
-                t_move( iMoves, data );
-                
-                if (data->m_sumStatEval > best)
-                {
-                    best = data->m_sumStatEval;
-                }
-
-                t_remove( data );
-            }
-        }
-	}
-	else
-	{
-		t_descendMoves(rgMoves, movesLim, data);
-
-		// cut branching factor to mconst_branchFactorMax
-		movesLim = (movesLim > const_branchFactorMax)
-		           ? const_branchFactorMax : movesLim;
-
-		// for every daughter
-		for(iMoves = 0; iMoves < movesLim; iMoves++)
-		{
-			t_move( rgMoves[ iMoves ], data);
-			temp = t_isGameOver(data) ? data->m_sumStatEval
-			                    : t_calcMinEval( depth, best, beta, data );
-			t_remove( data );
-
-			if (best < temp)
-			{
-				best = temp;
-				
-				// Check for an alphabeta "prune" of the tree. Early exit
-				// because max has a position here that is better than another
-				// position which min could choose, so min would never allow.
-				if (temp >= beta)
-				{
-                    //printf("Thread %d: Pruned!\n", data->thread_num);
-					break;
-				}
-			}
-		}		  					 
-	}
-
-	return best;
-}
-
-int calcMinEval( int depth, int alpha, int beta )
-{
-	// start off assuming the worst for min
+void *t_calcMaxMove(void *arg) {
 	int iMoves;
 	int temp;
 	int best = const_bestEval;
-	
+	int maxDepth;
+	result_t *cresult;
+
 	// the list of valid moves, 'best' move first (descending static value)
 	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
 
-	// if this is the end of the tree (depth now 0)
-	if (! (--depth))
-	{                 
-		for (iMoves = 0; iMoves < movesLim; iMoves++)
-		{
-			if (!board.m_rgPosition[ iMoves ])
-			{
-				move( iMoves );
+	// cut branching factor to mconst_branchFactorMax
+	movesLim = (movesLim > const_branchFactorMax)
+			   ? const_branchFactorMax : movesLim;
 
-				if (board.m_sumStatEval < best)
-				{
-					best = board.m_sumStatEval;
-	         	}
+	work_t *work = (work_t *)arg;
+	int depth = work->depth;
 
-				remove();
-			}
-		}
+#ifdef debug
+	printf("%d: Test Move: %d at depth %d\n", pthread_self(), work->move, depth);
+#endif
+
+	result_t *result = (result_t *)malloc(sizeof(result_t));
+	if(result == NULL)
+		exit(1);
+
+#ifdef debug
+	printf("%d: Before Move\n", pthread_self());
+#endif
+	move(&work->board, work->move);
+#ifdef debug
+	printf("%d: After Move\n", pthread_self());
+#endif
+
+	// if the game is over or this is the end of the tree (depth now 0)
+	if(isGameOver(&work->board) || !(depth--))
+	{
+#ifdef debug
+	printf("%d: Game over detected or end of tree: %d\n", pthread_self(), depth);
+#endif
+
+		result->move_value = work->board.m_sumStatEval;
+		result->max_depth = work->depth;
 	}
 	else
 	{
-		ascendMoves( rgMoves, movesLim );
+		// some initial pthread stuff
+		pthread_t threads[7];
+		pthread_attr_t attr;
+		pthread_attr_init (&attr);
 
-		// cut branching factor to mconst_branchFactorMax
-		movesLim = (movesLim > const_branchFactorMax)
-		           ? const_branchFactorMax : movesLim;
+		work_t childWork[7];
+
+#ifdef debug
+	printf("%d: Removing non-moves\n", pthread_self());
+#endif
+		// Remove unavailable moves
+		removeNonMoves(&work->board, rgMoves, &movesLim);
 
 		// for every daughter
 		for(iMoves = 0; iMoves < movesLim; iMoves++)
 		{
-			move( rgMoves[ iMoves ] );
-			temp = isGameOver() ? board.m_sumStatEval
-			                    : calcMaxEval( depth, alpha, best );
-			remove();
+#ifdef debug
+	printf("%d: Trying child move %d\n", pthread_self(), rgMoves[iMoves]);
+#endif
+			childWork[iMoves].move = rgMoves[iMoves];
+			childWork[iMoves].alpha = work->alpha;
+			childWork[iMoves].beta = best;
+			childWork[iMoves].depth = depth;
+			childWork[iMoves].board = work->board;
 
-			if (best > temp)
+#ifdef debug
+	printf("%d: Creating thread\n", pthread_self());
+#endif
+			int status = pthread_create(&threads[iMoves], &attr, t_calcMinMove, (void *)&childWork[iMoves]);
+#ifdef debug
+	printf("%d: Thread created: %d\n", pthread_self(), status);
+#endif
+		}
+
+		for(iMoves = 0; iMoves < movesLim; iMoves++)
+		{
+#ifdef debug
+	printf("%d: Joining thread %d\n", pthread_self(), threads[iMoves]);
+#endif
+			pthread_join(threads[iMoves], (void **)&cresult);
+			if (cresult->move_value < best)
 			{
-				best = temp;
-				
+				best = cresult->move_value;
+				result->move_value = best;
+				result->max_depth = cresult->max_depth;
+
 				// Check for an alphabeta "prune" of the tree. Early exit
 				// because max has a position here that is better than another
 				// position which min could choose, so min would never allow.
-				if (temp <= alpha)
+				if (best <= work->alpha)
 				{
 					break;
 				}
 			}
+			free(cresult);
 		}
 	}
 
-	return best;
+#ifdef debug
+	printf("%d: Returning result: %d\n", pthread_self(), result->move_value);
+#endif
+	pthread_exit((void *)result);
 }
 
-int t_calcMinEval( int depth, int alpha, int beta, cwork_t* data )
-{
-	// start off assuming the worst for min
+void *t_calcMinMove(void *arg) {
 	int iMoves;
 	int temp;
-	int best = const_bestEval;
-	
+	int best = const_worstEval;
+	int maxDepth;
+	result_t *cresult;
+
 	// the list of valid moves, 'best' move first (descending static value)
 	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
 
-	// if this is the end of the tree (depth now 0)
-	if (! (--depth))
-	{                 
-		for (iMoves = 0; iMoves < movesLim; iMoves++)
-		{
-			if (!data->m_rgPosition[ iMoves ])
-			{
-				t_move( iMoves, data );
+	// cut branching factor to mconst_branchFactorMax
+	movesLim = (movesLim > const_branchFactorMax)
+			   ? const_branchFactorMax : movesLim;
 
-				if (data->m_sumStatEval < best)
-				{
-					best = data->m_sumStatEval;
-	         	}
+	work_t *work = (work_t *)arg;
+	printf("arg=%d\n", arg);
+	printf("depth=%d\n", work->depth);
+	int depth = work->depth;
 
-				t_remove( data );
-			}
-		}
+#ifdef debug
+	printf("%d: Test Move: %d at depth %d\n", pthread_self(), work->move, depth);
+#endif
+
+	result_t *result = (result_t *)malloc(sizeof(result_t));
+	if(result == NULL)
+		exit(1);
+
+#ifdef debug
+	printf("%d: Before Move\n", pthread_self());
+#endif
+
+	move(&work->board, work->move);
+
+#ifdef debug
+	printf("%d: After Move\n", pthread_self());
+#endif
+
+	// if the game is over or this is the end of the tree (depth now 0)
+	if(isGameOver(&work->board) || !(depth--))
+	{
+#ifdef debug
+	printf("%d: Game over detected or end of tree: %d\n", pthread_self(), depth);
+#endif
+
+		result->move_value = work->board.m_sumStatEval;
+		result->max_depth = work->depth;
 	}
 	else
 	{
-		t_ascendMoves( rgMoves, movesLim, data );
+		// some initial pthread stuff
+		pthread_t threads[7];
+		pthread_attr_t attr;
+		pthread_attr_init (&attr);
 
-		// cut branching factor to mconst_branchFactorMax
-		movesLim = (movesLim > const_branchFactorMax)
-		           ? const_branchFactorMax : movesLim;
+		work_t childWork[7];
+
+		// Remove unavailable moves
+		removeNonMoves(&work->board, rgMoves, &movesLim);
 
 		// for every daughter
 		for(iMoves = 0; iMoves < movesLim; iMoves++)
 		{
-			t_move( rgMoves[ iMoves ], data );
-			temp = t_isGameOver( data ) ? data->m_sumStatEval
-			                    : t_calcMaxEval( depth, alpha, best, data );
-			t_remove( data );
+#ifdef debug
+	printf("%d: Trying child move %d\n", pthread_self(), rgMoves[iMoves]);
+#endif
 
-			if (best > temp)
+			childWork[iMoves].move = rgMoves[iMoves];
+			childWork[iMoves].alpha = work->alpha;
+			childWork[iMoves].beta = best;
+			childWork[iMoves].depth = depth;
+			childWork[iMoves].board = work->board;
+
+#ifdef debug
+	printf("%d: Creating thread\n", pthread_self());
+#endif
+			int status = pthread_create(&threads[iMoves], &attr, t_calcMinMove, (void *)&childWork[iMoves]);
+#ifdef debug
+	printf("%d: Thread created: %d\n", pthread_self(), status);
+#endif
+		}
+
+		for(iMoves = 0; iMoves < movesLim; iMoves++)
+		{
+#ifdef debug
+	printf("%d: Joining thread %d\n", pthread_self(), threads[iMoves]);
+#endif
+			pthread_join(threads[iMoves], (void **)&cresult);
+			if (cresult->move_value > best)
 			{
-				best = temp;
-				
+				best = cresult->move_value;
+				result->move_value = best;
+				result->max_depth = cresult->max_depth;
+
 				// Check for an alphabeta "prune" of the tree. Early exit
 				// because max has a position here that is better than another
 				// position which min could choose, so min would never allow.
-				if (temp <= alpha)
+				if (best >= work->beta)
 				{
-                    //printf("Thread %d: Pruned!\n", data->thread_num);
 					break;
 				}
 			}
+			free(cresult);
 		}
 	}
 
-	return best;
+#ifdef debug
+	printf("%d: Returning result: %d\n", pthread_self(), result->move_value);
+#endif
+	pthread_exit((void *)result);
 }
 
-void descendMoves( int* moves, int &movesLim )
-{
+void removeNonMoves(board_t *b, int *moves, int *nummoves) {
 	int i = 0;
-	int j;
-	int temp;
-	int *statvals;
-	int bigval, bigindex;
-
-	statvals = (int *)calloc(movesLim,sizeof(int));
-
-	while (i < movesLim)
-	{
-		// if the column of move i is full, take it off the list
-		// by reducing size and copying the last element into its place
-		if (board.m_rgPosition[ moves[ i ] ])  
+	while(i < *nummoves) {
+		if (b->m_rgPosition[ moves[ i ] ])
 		{
-			moves[ i ] = moves[ movesLim - 1 ];
-			movesLim--;
+			moves[ i ] = moves [ *nummoves - 1 ];
+			(*nummoves)--;
 		}
-		else
-		{
-			move( moves[ i ] );
-			statvals[ moves[ i ] ] = board.m_sumStatEval;
-			remove();
-			i++;
-		}
-	}
-
-	// sorting algorithm
-	for (i = 0; i < movesLim - 1; i++)
-	{
-		bigval = statvals[ moves[ i ] ];
-		bigindex = 0;
-
-		for (j = i + 1; j < movesLim; j++)
-		if (statvals[ moves[ j ] ] > bigval)
-		{
-			bigval = statvals[ moves[ j ] ];
-			bigindex = j;
-		}
-
-		if (bigindex)
-		{
-			temp = moves[ i ];
-			moves[ i ] = moves[ bigindex ];
-			moves[ bigindex ] = temp;
-		}
-	}
-	free(statvals);
-}
-
-void t_descendMoves( int* moves, int &movesLim, cwork_t* data)
-{
-	int i = 0;
-	int j;
-	int temp;
-	int *statvals;
-	int bigval, bigindex;
-
-	statvals = (int *)calloc(movesLim,sizeof(int));
-
-	while (i < movesLim)
-	{
-		// if the column of move i is full, take it off the list
-		// by reducing size and copying the last element into its place
-		if (data->m_rgPosition[ moves[ i ] ])  
-		{
-			moves[ i ] = moves[ movesLim - 1 ];
-			movesLim--;
-		}
-		else
-		{
-			t_move( moves[ i ], data );
-			statvals[ moves[ i ] ] = data->m_sumStatEval;
-			t_remove( data );
-			i++;
-		}
-	}
-
-	// sorting algorithm
-	for (i = 0; i < movesLim - 1; i++)
-	{
-		bigval = statvals[ moves[ i ] ];
-		bigindex = 0;
-
-		for (j = i + 1; j < movesLim; j++)
-		if (statvals[ moves[ j ] ] > bigval)
-		{
-			bigval = statvals[ moves[ j ] ];
-			bigindex = j;
-		}
-
-		if (bigindex)
-		{
-			temp = moves[ i ];
-			moves[ i ] = moves[ bigindex ];
-			moves[ bigindex ] = temp;
-		}
-	}
-	free(statvals);
-}
-
-void ascendMoves( int* moves, int &movesLim )
-{
-	int i = 0;
-	int j;
-	int temp;
-	int *statvals;
-	int smallval, smallindex;
-
-	statvals = (int *)calloc(movesLim,sizeof(int));
-
-	while (i < movesLim)
-	{
-		// if the column of move i is full, take it off the list
-		// by reducing size and copying the last element into its place
-		if (board.m_rgPosition[ moves[ i ] ])
-		{
-			moves[ i ] = moves[ movesLim - 1 ];
-			movesLim--;
-		}
-		else
-		{
-			move( moves[ i ] );
-			statvals[ moves[ i++ ] ] = board.m_sumStatEval;
-			remove();
-		}
-	}
-
-	// sorting algorithm
-	for (i = 0; i < movesLim - 1; i++)
-	{
-		smallval = statvals[ moves[ i ] ];
-		smallindex = 0;
-
-		for (j = i + 1; j < movesLim; ++j)
-		if (statvals[ moves[ j ] ] < smallval)
-		{
-			smallval = statvals[ moves[ j ] ];
-			smallindex = j;
-		}
-
-		if (smallindex)
-		{
-			temp = moves[ i ];
-			moves[ i ] = moves[ smallindex ];
-			moves[ smallindex ] = temp;
-		}
-	}
-	free(statvals);
-}
-
-void t_ascendMoves( int* moves, int &movesLim, cwork_t* data )
-{
-	int i = 0;
-	int j;
-	int temp;
-	int *statvals;
-	int smallval, smallindex;
-
-	statvals = (int *)calloc(movesLim,sizeof(int));
-
-	while (i < movesLim)
-	{
-		// if the column of move i is full, take it off the list
-		// by reducing size and copying the last element into its place
-		if (data->m_rgPosition[ moves[ i ] ])
-		{
-			moves[ i ] = moves[ movesLim - 1 ];
-			movesLim--;
-		}
-		else
-		{
-			t_move( moves[ i ], data );
-			statvals[ moves[ i++ ] ] = data->m_sumStatEval;
-			t_remove( data );
-		}
-	}
-
-	// sorting algorithm
-	for (i = 0; i < movesLim - 1; i++)
-	{
-		smallval = statvals[ moves[ i ] ];
-		smallindex = 0;
-
-		for (j = i + 1; j < movesLim; ++j)
-		if (statvals[ moves[ j ] ] < smallval)
-		{
-			smallval = statvals[ moves[ j ] ];
-			smallindex = j;
-		}
-
-		if (smallindex)
-		{
-			temp = moves[ i ];
-			moves[ i ] = moves[ smallindex ];
-			moves[ smallindex ] = temp;
-		}
-	}
-	free(statvals);
-}
-
-void* t_main( void* args ) {
-    // args holds our data.
-    cwork_t* data = (cwork_t*) args;
-
-    while(1) {
-        // get a lock on our data space
-        pthread_mutex_lock(&data->lock);
-#ifdef debug
-        printf("Thread %d: active!\n", data->thread_num);
-#endif
-
-        // while our board is in sync with the main board
-        while (!data->m_eval) {
-#ifdef debug
-            printf("Thread %d: going to sleep!\n", data->thread_num);
-#endif
-            // wait until we are woken up and the board is different
-            pthread_cond_wait(&data->cond, &data->lock);
-#ifdef debug
-            printf("Thread %d: awoken!\n", data->thread_num);
-#endif
-        }
-        data->m_eval = 0;
-        // The main board should never be more than 1 or 2 moves ahead of us
-        assert(board.m_cMoves - data->m_cMoves == 1 || 
-                board.m_cMoves - data->m_cMoves == 2);
-#ifdef debug
-        printf("Thread %d: Main board has %d moves\n", data->thread_num, board.m_cMoves);
-        printf("Thread %d: Our board has %d moves\n", data->thread_num, data->m_cMoves);
-        printf("Thread %d: updating its board!\n", data->thread_num);
-#endif
-
-        // Update our board with the latest move(s).
-        if (board.m_cMoves - data->m_cMoves == 1) {
-            t_move(getLastMove(), data);
-        }
-        else {
-            t_move(getSecondToLastMove(), data);
-            t_move(getLastMove(), data);
-        }
-#ifdef debug
-        printf("Thread %d: Our new board has %d moves\n", data->thread_num, data->m_cMoves);
-#endif
-        // do our evaluation
-        // If it's the computer's turn, do a Max.
-		if ( board.m_fIsComputerTurn )
-	   	{
-#ifdef debug
-            printf("Thread %d: Comp's turn.\n", data->thread_num);
-#endif
-            t_calcMaxWork( data );
-		}
-        // Otherwise, do a min.
-        else {
-#ifdef debug
-            printf("Thread %d: Other's turn.\n", data->thread_num);
-#endif
-        }
-
-        // unlock our data space
-        pthread_mutex_unlock(&data->lock);
-
-    }
-    pthread_exit(NULL);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/****** The posquad data above was generated by this old code ****************
-
-#include <iostream.h>
-
-void updatequad(int quad);
-void test(int row, int col);
-
-void main(void)
-{
-	int row, col;
-	for (row = 0; row < 6; ++row)
-	{
-		for (col = 0; col < 7; ++col)
-		{
-			cout << "{";
-			test(row, col);
-			cout << "0}, ";
-		}
+		else { i++; }
 	}
 }
-
-void updatequad(int quad)
-{
-	cout << quad + 1 << ", ";
-}
-
-void test(int row, int col)
-{
-	// update horizontal quads for this position
-	int basequad = 4 * row;
-	if (col <= 3)
-		updatequad(basequad);
-	if (col && col <= 4)  // between 1 and 4
-		updatequad(basequad + 1);
-	if (col >= 2 && col <= 5)
-		updatequad(basequad + 2);
-	if (col >= 3)
-		updatequad(basequad + 3);
-
-	// update vertical quads for this position
-	basequad = 24 + 3 * col;
-	if (row <= 3)
-		updatequad(basequad);
-	if (row && row != 5)  // between 1 and 4
-		updatequad(basequad + 1);
-	if (row >= 2)
-		updatequad(basequad + 2);
-
-	// update upper-left/lower-right diagonals
-	// find the quad by finding the upperleft starting points int the
-	// 3x4 rectangle in the upperleft part of the connect4 board.
-	// check the row,col and the three points diagonal from it up and left.
-	// quadbase is hard-coded as 45
-	int myrow = row;
-	int mycol = col;
-	if (myrow <= 2 && mycol <= 3)
-		updatequad(45 + 4 * myrow + mycol);
-	
-	// if neither of them are 0, do it again at upperleft square
-	// note that it decrements *after* evaluation
-	if (myrow-- && mycol--)
-	{
-		if (myrow <= 2 && mycol <= 3)
-			updatequad(45 + 4 * myrow + mycol);
-		if (myrow-- && mycol--)
-		{
-			if (myrow <= 2 && mycol <= 3)
-				updatequad(45 + 4 * myrow + mycol);
-			if (myrow-- && mycol--)
-				updatequad(45 + 4 * myrow + mycol);
-		}
-	}
-
-	// update the upper-right / lower-left diagonal
-	// find the quad by the upper-right starting point
-	// quadbase is 57 really, but 54 to compensate for a col starting at 3.
-	if (row <= 2 && col >= 3)
-		updatequad(54 + 4 * row + col);
-	if (row-- && col++ <= 5)
-	{
-		if (row <= 2 && col >= 3)
-			updatequad(54 + 4 * row + col);
-		if (row-- && col++ <= 5)
-		{
-			if (row <= 2 && col >= 3)
-				updatequad(54 + 4 * row + col);
-			if (row-- && col++ <= 5)
-				updatequad(54 + 4 * row + col);
-		}
-	}
-}
-
-************************* end of unused old code **************************/
-
-/************** the updatequad function used to be calculated this way *****
-
-	if (max)
-	{
-		if (quadneg[quadnum])
-		{
-			if (!quadpos[quadnum]++)
-				stateval -= NEGVAL[quadneg[quadnum]];
-		}
-		else
-		{
-			stateval -= POSVAL[quadpos[quadnum]++] - POSVAL[quadpos[quadnum]];
-		}
-	}
-	else
-	{
-		if (quadpos[quadnum])
-		{
-			if (!quadneg[quadnum]++)
-				stateval -= POSVAL[quadpos[quadnum]];
-		}
-		else
-		{
-			stateval -= NEGVAL[quadneg[quadnum]++] - NEGVAL[quadneg[quadnum]];
-		}
-	}
-********************* end of unused old code *******************************/
-
-/*************old version of eval functions********************
-
-		//	This statement does it all. Recurse, propogating correct alpha
-		//	and beta values (only one of which can change at any given node)
-		//	unless of course the recursion has terminated, in which case we
-		//	use the value of the node, as evaluated by worth when allsons
-		//	created the node. Put the value thus obtained into temp, and
-		//	compare it with the best value seen so far. The sense of
-		//	comparison is reversed if curmax is true (bitwise xor is all
-		//	right if both booleans are "pure"--0 or 1).
-
-
-int Board::alphabeta(int move, int depth, int alpha, int beta)
-{
-	int i,
-		temp,
-		best,
-		curmax; 	// contains the current value of the global "max",
-					// negated (to minimize the number of negations)
-
-	makemove(move);
-
-	if (depth == MAXDEPTH || gameover())
-	{
-		temp = stateval;
-		remove();
-		return temp;
-	}
-
-	best = max ? WORST : BEST;	// start off assuming the worst
-	curmax = max;			    // keep track of max through recursive calls
-
-	// for every son
-	for(i=0; i < 7 ; i++)
-	{
-	if (!pos[i])
-	{
-		if(curmax && (best < (temp = alphabeta(i,depth+1,best,beta)))
-		   || !curmax && (best > (temp = alphabeta(i,depth+1,alpha,best))))
-		{
-			// check for an alphabeta "prune" of the tree
-			if(curmax?(temp>=beta):(temp<=alpha))
-			{
-				remove();
-				return(temp);
-			}
-			else
-				best = temp;	// remember the best value seen so far
-		}
-	}
-	}
-
-	remove();
-	return(best);
-}
-
-***************************/

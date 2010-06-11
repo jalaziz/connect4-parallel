@@ -55,7 +55,7 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-	int rgBoardPos[ const_posLim ];
+	char rgBoardPos[ const_posLim ];
 	clock_t clkBefore, clkAfter;
 
     boardInit();

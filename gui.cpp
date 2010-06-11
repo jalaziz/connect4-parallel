@@ -34,7 +34,7 @@ using namespace std;
 int screen_height = 720;
 int screen_width = 720;
 game_state state = prompt_column;
-int game_board[const_posLim];
+char game_board[const_posLim];
 int col_preview = 3;
 bool game_over;
 bool draw_player_piece_first = false;
@@ -134,7 +134,7 @@ void key(unsigned char key, int x, int y) {
 
     switch (key) {
         case 13:
-            move(col_preview);
+            move(&board, col_preview);
             col_preview = 3;
             draw_player_piece_first = true;
             break;
@@ -163,7 +163,7 @@ void specialKey(int key, int x, int y) {
 }
 
 void game_loop() {
-    if (isGameOver()) {
+    if (isGameOver(&board)) {
         endgame( isComputerWin() ? 1 : ( isHumanWin() ? -1 : 0 ) );
         game_over = true;
         return;
@@ -307,7 +307,7 @@ char prompt( void )
 // the characters displayed are either 'X' for the human,
 // 'O' for the computer, or '*' for a blank.  the characters are from left
 // to right horizontally on board, row by row, starting at top row.
-void display( int* boardpos, int col, int humanmove )
+void display( char* boardpos, int col, int humanmove )
 {
 	char output[ 128 ];
 	int x, y;

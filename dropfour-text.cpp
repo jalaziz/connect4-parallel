@@ -54,7 +54,7 @@ using namespace std;
 
 int main()
 {
-	int rgBoardPos[ const_posLim ];
+	char rgBoardPos[ const_posLim ];
 	clock_t clkBefore, clkAfter;
 
     boardInit();
@@ -74,7 +74,7 @@ int main()
 	getBoardState( rgBoardPos );
 	display( rgBoardPos );
 
-	while (!isGameOver())
+	while (!isGameOver(&board))
 	{
 		if ( isComputerTurn() )
 		{

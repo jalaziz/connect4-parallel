@@ -45,7 +45,7 @@ char prompt( void );
 // the characters displayed are either 'X' for the human,
 // 'O' for the computer, or '*' for a blank.  the characters are from left
 // to right horizontally on board, row by row, starting at top row.
-void display( int* boardpos, int col = -1, int humanmove = -1 );
+void display( char* boardpos, int col = -1, int humanmove = -1 );
 
 // called by prompt if user presses x, X, q, or Q
 void quit( void );
