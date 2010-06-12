@@ -7,7 +7,7 @@ GUILIB = -lGL -lglut -lGLU
 
 BINDIR= bin
 
-all: drop4txt
+all: txt gui
 
 txt: ${SRCS}
 	if [ ! -d "${BINDIR}" ]; then mkdir bin; fi
