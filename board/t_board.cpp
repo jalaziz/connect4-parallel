@@ -673,8 +673,6 @@ void *t_calcMinMove(void *arg) {
 			   ? const_branchFactorMax : movesLim;
 
 	work_t *work = (work_t *)arg;
-	printf("arg=%d\n", arg);
-	printf("depth=%d\n", work->depth);
 	int depth = work->depth;
 
 #ifdef debug
