@@ -5,13 +5,17 @@ SRCS = dropfour-text.cpp ioface.cpp board/t_board.cpp
 GUISRCS = dropfour-gui.cpp gui.cpp board/t_board.cpp
 GUILIB = -lGL -lglut -lGLU
 
+BINDIR= bin
+
 all: txt gui
 
 txt: ${SRCS}
-	${CC} ${FLAG} -o drop4txt ${SRCS}
+	if [ ! -d "${BINDIR}" ]; then mkdir bin; fi
+	${CC} ${FLAG} -o ${BINDIR}/drop4txt ${SRCS}
 
 gui: ${GUISRCS}
-	${CC} ${FLAG} -o drop4gui ${GUISRCS} ${GUILIB}
+	if [ ! -d "${BINDIR}" ]; then mkdir bin; fi
+	${CC} ${FLAG} -o ${BINDIR}/drop4gui ${GUISRCS} ${GUILIB}
 
 clean:
-	rm -rf *.o drop4txt drop4gui
+	rm -rf ${BINDIR} *.o
