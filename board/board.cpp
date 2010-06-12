@@ -5,17 +5,17 @@
  * E-mail Peter Kirby at gmail (peterkirby) or at www.peterkirby.com.
  *
  * "Drop Four" is a clone of the "Connect Four" (tm) of Milton Bradley.
- *
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- *
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
@@ -29,7 +29,7 @@
  * are numbered 0-5, and the columns are numbered 0-6, then the location of
  * one square in the grid is 7 * row + col. The squares contain a 0 for a
  * blank, a -1 for Player One (human), and a 1 for Player Two (computer).
- *
+ * 
  * The Board class also contains an array of 69 integers.  The first 24 are
  * the horizontal rows of four squares (quads), four in each of the six
  * different columns.  The row from square 0 to 3 is quad 0, the row from
@@ -367,10 +367,10 @@ int Board::takeComputerTurn( void )
 		{
 			colMove = calcMinMove();
 		}
-
+		
 		move( colMove );
 	}
-
+	
 	return colMove;
 }
 
@@ -388,7 +388,7 @@ int Board::takeBackMove( void )
 	{
 		colMove = mconst_colNil;
 	}
-
+	
 	return colMove;
 }
 
@@ -595,13 +595,13 @@ int Board::calcMaxEval( int depth, int alpha, int beta )
 
 	// if this is the end of the tree (depth now 0)
 	if (! (--depth))
-	{
+	{                 
 		for (int iMoves = 0; iMoves < movesLim; iMoves++)
 
 		if (!m_rgPosition[ iMoves ])
 		{
 			move( iMoves );
-
+			
 			if (m_sumStatEval > best)
 			{
 				best = m_sumStatEval;
@@ -629,7 +629,7 @@ int Board::calcMaxEval( int depth, int alpha, int beta )
 			if (best < temp)
 			{
 				best = temp;
-
+				
 				// Check for an alphabeta "prune" of the tree. Early exit
 				// because max has a position here that is better than another
 				// position which min could choose, so min would never allow.
@@ -638,7 +638,7 @@ int Board::calcMaxEval( int depth, int alpha, int beta )
 					break;
 				}
 			}
-		}
+		}		  					 
 	}
 
 	return best;
@@ -650,14 +650,14 @@ int Board::calcMinEval( int depth, int alpha, int beta )
 	int iMoves;
 	int temp;
 	int best = mconst_bestEval;
-
+	
 	// the list of valid moves, 'best' move first (descending static value)
 	int rgMoves[] = {3, 2, 4, 1, 5, 0, 6};
 	int movesLim = sizeof( rgMoves ) / sizeof( int );
 
 	// if this is the end of the tree (depth now 0)
 	if (! (--depth))
-	{
+	{                 
 		for (iMoves = 0; iMoves < movesLim; iMoves++)
 		{
 			if (!m_rgPosition[ iMoves ])
@@ -692,7 +692,7 @@ int Board::calcMinEval( int depth, int alpha, int beta )
 			if (best > temp)
 			{
 				best = temp;
-
+				
 				// Check for an alphabeta "prune" of the tree. Early exit
 				// because max has a position here that is better than another
 				// position which min could choose, so min would never allow.
@@ -721,7 +721,7 @@ void Board::descendMoves( int* moves, int &movesLim )
 	{
 		// if the column of move i is full, take it off the list
 		// by reducing size and copying the last element into its place
-		if (m_rgPosition[ moves[ i ] ])
+		if (m_rgPosition[ moves[ i ] ])  
 		{
 			moves[ i ] = moves[ movesLim - 1 ];
 			movesLim--;
@@ -915,7 +915,7 @@ void test(int row, int col)
 	int mycol = col;
 	if (myrow <= 2 && mycol <= 3)
 		updatequad(45 + 4 * myrow + mycol);
-
+	
 	// if neither of them are 0, do it again at upperleft square
 	// note that it decrements *after* evaluation
 	if (myrow-- && mycol--)
