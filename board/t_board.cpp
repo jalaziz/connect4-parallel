@@ -1533,7 +1533,8 @@ void* t_main( void* args ) {
         }
         data->m_eval = 0;
         // The main board should never be more than 1 or 2 moves ahead of us
-        assert(board.m_cMoves - data->m_cMoves == 1 || 
+        assert(board.m_cMoves - data->m_cMoves == 0 || 
+                board.m_cMoves - data->m_cMoves == 1 || 
                 board.m_cMoves - data->m_cMoves == 2);
 #ifdef debug
         printf("Thread %d: Main board has %d moves\n", data->thread_num, board.m_cMoves);
@@ -1545,7 +1546,7 @@ void* t_main( void* args ) {
         if (board.m_cMoves - data->m_cMoves == 1) {
             t_move(getLastMove(), data);
         }
-        else {
+        else if (board.m_cMoves - data->m_cMoves == 2) {
             t_move(getSecondToLastMove(), data);
             t_move(getLastMove(), data);
         }
