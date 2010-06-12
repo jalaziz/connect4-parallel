@@ -2,17 +2,20 @@ CC   = g++
 FLAG = -g -pthread -Iboard
 SRCS = dropfour-text.cpp ioface.cpp board/t_board.cpp
 
-GUIFLAG = -g -pthread -Iboard
 GUISRCS = dropfour-gui.cpp gui.cpp board/t_board.cpp
 GUILIB = -lGL -lglut -lGLU
 
+BINDIR= bin
+
 all: drop4txt
 
-drop4txt: ${SRCS}
-	${CC} ${FLAG} -o drop4txt ${SRCS}
+txt: ${SRCS}
+	if [ ! -d "${BINDIR}" ]; then mkdir bin; fi
+	${CC} ${FLAG} -o ${BINDIR}/drop4txt ${SRCS}
 
-gui: $(GUISRCS)
-	$(CC) $(GUIFLAG) -o drop4gui $(GUISRCS) $(GUILIB)
+gui: ${GUISRCS}
+	if [ ! -d "${BINDIR}" ]; then mkdir bin; fi
+	${CC} ${FLAG} -o ${BINDIR}/drop4gui ${GUISRCS} ${GUILIB}
 
 clean:
-	rm -rf *.o drop4txt drop4gui
+	rm -rf ${BINDIR} *.o
