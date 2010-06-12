@@ -1153,6 +1153,12 @@ int t_calcMaxEval( int depth, int alpha, int beta, cwork_t* data )
 		// for every daughter
 		for(iMoves = 0; iMoves < movesLim; iMoves++)
 		{
+		
+			if (board.m_depthMax-depth==1) {
+				pthread_mutex_lock(&board.result.lock);
+				beta = board.result.beta;
+				pthread_mutex_unlock(&board.result.lock);
+			}
 			t_move( rgMoves[ iMoves ], data);
 			temp = t_isGameOver(data) ? data->m_sumStatEval
 			                    : t_calcMinEval( depth, best, beta, data );
@@ -1175,6 +1181,16 @@ int t_calcMaxEval( int depth, int alpha, int beta, cwork_t* data )
 				}
 			}
 		}
+	}
+
+	if (board.m_depthMax-depth==1) {
+		pthread_mutex_lock(&board.result.lock);
+		if (best < board.result.beta) {
+			#ifdef GLOBAL_BETA
+			board.result.beta = best;
+			#endif
+		}
+		pthread_mutex_unlock(&board.result.lock);
 	}
 
 #ifdef DEBUG_THREAD
